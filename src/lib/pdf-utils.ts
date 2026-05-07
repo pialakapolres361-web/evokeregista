@@ -18,31 +18,29 @@ export const generateAndDownloadPDF = async (elementId: string, registration: Re
   const originalWidth = element.style.width;
   const originalHeight = element.style.height;
 
+  // Wait a tiny bit to ensure DOM is ready and transforms are cleared
+  await new Promise(resolve => setTimeout(resolve, 100));
+
   try {
     const canvas = await html2canvas(element, {
-      scale: 2, // Slightly lower scale to avoid memory issues on mobile
+      scale: 3, // Higher scale for better precision
       useCORS: true,
-      allowTaint: true,
+      allowTaint: false, // Changed to false for better CORS security handling
       logging: false,
-      backgroundColor: '#ffffff',
-      windowWidth: element.scrollWidth,
-      windowHeight: element.scrollHeight,
+      backgroundColor: null, // Transparent background to preserve element background
+      width: element.offsetWidth,
+      height: element.offsetHeight,
       onclone: (clonedDoc) => {
-        // html2canvas fails on oklch() color strings from Tailwind 4.
-        // We must reach into the cloned document and fix these colors.
-        
         const style = clonedDoc.createElement('style');
         style.innerHTML = `
           /* Basic resets for capture */
           #id-card-capture { 
-            background-color: #ffffff !important;
-            color: #000000 !important;
+            background-color: transparent !important;
             box-shadow: none !important;
             transform: none !important;
-            position: absolute !important;
-            top: 0 !important;
-            left: 0 !important;
+            position: relative !important;
             margin: 0 !important;
+            border: none !important;
           }
           /* Override common Tailwind classes with safe HEX values */
           .bg-white { background-color: #ffffff !important; }

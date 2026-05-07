@@ -99,10 +99,6 @@ export default function IDCardPreview({ registration, containerRef }: IDCardPrev
         id="id-card-capture"
         className="relative overflow-hidden rounded-2xl bg-white border border-neutral-100 origin-top"
         style={{ 
-          backgroundImage: `url(${config.backgroundUrl})`,
-          backgroundSize: config.backgroundSize || 'cover',
-          backgroundPosition: config.backgroundPosition || 'center',
-          backgroundRepeat: 'no-repeat',
           backgroundColor: '#ffffff',
           width: `${designWidth}px`,
           height: `${designHeight}px`,
@@ -111,6 +107,20 @@ export default function IDCardPreview({ registration, containerRef }: IDCardPrev
           flexShrink: 0
         }}
       >
+        {/* Background Image as an actual IMG tag for better PDF capture reliability */}
+        {config.backgroundUrl && (
+          <img 
+            src={config.backgroundUrl}
+            alt="Background"
+            crossOrigin="anonymous"
+            className="absolute inset-0 w-full h-full pointer-events-none"
+            style={{ 
+              objectFit: (config.backgroundSize as any) || 'cover',
+              objectPosition: config.backgroundPosition || 'center'
+            }}
+          />
+        )}
+
         {/* Render elements in sorted order */}
         {sortedElementKeys.map((key) => {
           const item = config.elements[key];
