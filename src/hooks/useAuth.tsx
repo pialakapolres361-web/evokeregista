@@ -20,7 +20,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
       if (user) {
-        const isHardcodedAdmin = user.email?.toLowerCase() === 'pencaksilatdandimcupbjn@gmail.com';
+        const isHardcodedAdmin = user.email?.toLowerCase() === 'pialakapolres361@gmail.com';
         try {
           const adminDoc = await getDoc(doc(db, 'admins', user.uid));
           setIsAdmin(adminDoc.exists() || isHardcodedAdmin);
