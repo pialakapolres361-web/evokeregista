@@ -1,0 +1,78 @@
+{
+  "entities": {
+    "Registration": {
+      "title": "Registration",
+      "description": "Athlete registration data for the event.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique registration ID (e.g., SILAT-12345)" },
+        "fullName": { "type": "string" },
+        "contingent": { "type": "string" },
+        "category": { "type": "string" },
+        "photoUrl": { "type": "string", "format": "uri" },
+        "customFields": { "type": "object", "description": "Dynamic field values from form builder" },
+        "createdAt": { "type": "number", "description": "Server timestamp" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["id", "fullName", "contingent", "category", "createdAt"]
+    },
+    "FormField": {
+      "title": "FormField",
+      "description": "Definition for a dynamic form field.",
+      "type": "object",
+      "properties": {
+        "label": { "type": "string" },
+        "type": { "type": "string", "enum": ["text", "number", "select", "checkbox"] },
+        "options": { "type": "array", "items": { "type": "string" } },
+        "required": { "type": "boolean" },
+        "order": { "type": "number" }
+      },
+      "required": ["label", "type", "order"]
+    },
+    "WebConfig": {
+      "title": "WebConfig",
+      "description": "Global application settings.",
+      "type": "object",
+      "properties": {
+        "appName": { "type": "string" },
+        "themeColor": { "type": "string" },
+        "isOpen": { "type": "boolean" },
+        "logoUrl": { "type": "string" }
+      }
+    },
+    "PdfConfig": {
+      "title": "PdfConfig",
+      "description": "Configuration for ID card PDF generation.",
+      "type": "object",
+      "properties": {
+        "backgroundUrl": { "type": "string" },
+        "elements": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "object", "properties": { "x": { "type": "number" }, "y": { "type": "number" }, "fontSize": { "type": "number" } } },
+            "id": { "type": "object", "properties": { "x": { "type": "number" }, "y": { "type": "number" }, "fontSize": { "type": "number" } } },
+            "photo": { "type": "object", "properties": { "x": { "type": "number" }, "y": { "type": "number" }, "width": { "type": "number" }, "height": { "type": "number" } } }
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "registrations": {
+      "schema": "Registration",
+      "description": "Collection of all athlete registrations."
+    },
+    "form_builder": {
+      "schema": "FormField",
+      "description": "Dynamic form configuration fields."
+    },
+    "settings/web_config": {
+      "schema": "WebConfig",
+      "description": "Site-wide branding and status."
+    },
+    "settings/pdf_config": {
+      "schema": "PdfConfig",
+      "description": "PDF layout coordinates and background."
+    }
+  }
+}

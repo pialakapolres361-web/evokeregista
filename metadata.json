@@ -1,0 +1,6 @@
+{
+  "name": "Silat Event Registration",
+  "description": "High-performance standalone registration system for Silat events with dynamic forms, instant PDF ID cards, and admin dashboard.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": []
+}

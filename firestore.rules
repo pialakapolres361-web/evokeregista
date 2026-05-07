@@ -1,0 +1,76 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 0.1 Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        (request.auth.token.email.lower() == 'pialakapolres361@gmail.com' && request.auth.token.email_verified == true)
+      );
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidRegistration(data) {
+      return data.keys().hasAll(['id', 'fullName', 'createdAt'])
+        && data.id is string && data.id.size() <= 100
+        && data.fullName is string && data.fullName.size() <= 400
+        && (data.createdAt is int || data.createdAt is timestamp);
+    }
+
+    // 1. Registrations
+    match /registrations/{regId} {
+      allow get: if true; 
+      allow list: if isAdmin();
+      
+      allow create: if isValidRegistration(incoming()) 
+        && isValidId(regId)
+        && incoming().id == regId;
+
+      allow update: if isAdmin() || (
+        isValidRegistration(incoming()) 
+        && incoming().id == existing().id 
+        && incoming().id == regId
+      );
+      
+      allow delete: if isAdmin();
+    }
+
+    // 2. Admins Collection
+    match /admins/{userId} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow write: if false; // Only manageable via Firebase Console or special script
+    }
+
+    // 3. Settings Collection
+    match /settings/{settingId} {
+      allow read: if true; // Public need to see branding and PDF config for client-side generation
+      allow write: if isAdmin();
+    }
+
+    // 4. Form Builder
+    match /form_builder/{fieldId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}
