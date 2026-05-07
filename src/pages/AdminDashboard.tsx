@@ -126,15 +126,25 @@ export default function AdminDashboard({ config }: AdminDashboardProps) {
   );
 
   const handleExport = () => {
-    const ws = XLSX.utils.json_to_sheet(registrations.map(r => ({
-      ID: r.id,
-      Nama: r.fullName,
-      Daftar_Pada: format(r.createdAt, 'yyyy-MM-dd HH:mm'),
-      ...r.customFields
-    })));
+    const dataToExport = registrations.map(r => {
+      const row: any = {
+        'KODE ID': r.id,
+        'NAMA LENGKAP': r.fullName,
+        'TANGGAL DAFTAR': format(r.createdAt, 'yyyy-MM-dd HH:mm')
+      };
+
+      // Tambahkan dynamic fields sesuai urutan di form builder
+      fields.forEach(field => {
+        row[field.label] = r.customFields?.[field.id] || '-';
+      });
+
+      return row;
+    });
+
+    const ws = XLSX.utils.json_to_sheet(dataToExport);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Registrations");
-    XLSX.writeFile(wb, `Registrasi_Silat_${Date.now()}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, ws, "Pendaftar");
+    XLSX.writeFile(wb, `Data_Pendaftar_Evoka_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
   };
 
   return (
