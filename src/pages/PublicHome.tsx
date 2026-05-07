@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Trophy, UserPlus, Download, Loader2, AlertCircle, ChevronRight, X } from 'lucide-react';
 import { db } from '../lib/firebase';
-import { doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { Registration, WebConfig, FormField } from '../types';
 import RegistrationForm from '../components/RegistrationForm';
 import IDCardPreview from '../components/IDCardPreview';
@@ -16,6 +16,15 @@ export default function PublicHome({ config }: PublicHomeProps) {
   const [searchId, setSearchId] = useState('');
   const [searching, setSearching] = useState(false);
   const [foundRegistration, setFoundRegistration] = useState<Registration | null>(null);
+  const [fields, setFields] = useState<FormField[]>([]);
+
+  useEffect(() => {
+    const q = query(collection(db, 'form_builder'), orderBy('order', 'asc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setFields(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FormField)));
+    });
+    return () => unsubscribe();
+  }, []);
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [selectedRole, setSelectedRole] = useState<'peserta' | 'pelatih' | null>(null);
@@ -135,62 +144,80 @@ export default function PublicHome({ config }: PublicHomeProps) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-950/90 backdrop-blur-md"
-              onClick={() => setFoundRegistration(null)}
+              className="fixed inset-0 z-[60] bg-slate-950/95 backdrop-blur-md overflow-y-auto"
             >
-              <div 
-                className="bg-slate-900 border border-slate-800 rounded-[40px] w-full max-w-lg overflow-hidden shadow-[0_0_50px_rgba(244,63,94,0.1)]"
-                onClick={e => e.stopPropagation()}
-              >
-                <div className="p-10">
-                  <div className="flex justify-between items-start mb-10">
-                    <div className="max-w-[70%]">
-                      <span className="text-[10px] font-black uppercase tracking-[0.3em] text-rose-500">
-                        {foundRegistration.type === 'pelatih' ? 'KARTU PELATIH' : 'KARTU PESERTA'}
-                      </span>
-                      <h4 className="text-4xl font-black italic tracking-tighter uppercase leading-none mt-2 text-white">{foundRegistration.fullName}</h4>
+              <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 md:p-10">
+                <motion.div 
+                  initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                  animate={{ scale: 1, opacity: 1, y: 0 }}
+                  className="bg-slate-900 border border-slate-800 rounded-[32px] md:rounded-[40px] w-full max-w-2xl overflow-hidden shadow-2xl shadow-black/50"
+                >
+                  <div className="p-6 sm:p-8 md:p-10">
+                    <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-8 sm:mb-10">
+                      <div className="max-w-full sm:max-w-[70%]">
+                        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-rose-500">
+                          {foundRegistration.type === 'pelatih' ? 'KARTU PELATIH' : 'KARTU PESERTA'}
+                        </span>
+                        <h4 className="text-3xl sm:text-4xl font-black italic tracking-tighter uppercase leading-tight mt-2 text-white break-words">{foundRegistration.fullName}</h4>
+                      </div>
+                      <div className="bg-slate-950 border border-slate-800 px-4 py-2 rounded-xl text-xs font-mono font-black text-rose-500 italic tracking-tighter whitespace-nowrap">
+                        {foundRegistration.id}
+                      </div>
                     </div>
-                    <div className="bg-slate-950 border border-slate-800 px-4 py-2 rounded-xl text-xs font-mono font-black text-rose-500 italic tracking-tighter">
-                      {foundRegistration.id}
-                    </div>
-                  </div>
 
-                  <div className="space-y-4 mb-10 border-y border-slate-800 py-6">
-                    <div className="flex justify-between items-center">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">KONTINGEN</span>
-                      <span className="font-black uppercase italic tracking-tighter text-white">{foundRegistration.contingent}</span>
+                    <div className="space-y-6 mb-10">
+                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 pt-6 border-t border-slate-800">
+                         {fields.map(field => {
+                           const value = foundRegistration.customFields?.[field.id];
+                           if (!value) return null;
+                           return (
+                            <div key={field.id} className="space-y-1">
+                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{field.label}</label>
+                              <p className="text-white font-bold uppercase tracking-tight break-words">{value}</p>
+                            </div>
+                           );
+                         })}
+                       </div>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">KATEGORI</span>
-                      <span className="font-black uppercase italic tracking-tighter text-rose-500">{foundRegistration.category}</span>
-                    </div>
-                  </div>
 
-                  <IDCardPreview registration={foundRegistration} />
-
-                  <div className="mt-10 flex flex-col gap-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <button 
-                        onClick={() => setIsEditing(true)}
-                        className="py-4 rounded-2xl bg-slate-800 text-white font-black italic tracking-tighter uppercase hover:bg-slate-700 transition-all border border-slate-700"
-                      >
-                        UBAH DATA
-                      </button>
-                      <button 
-                        onClick={() => generateAndDownloadPDF('id-card-capture', foundRegistration!)}
-                        className="py-4 rounded-2xl bg-rose-600 text-white font-black italic tracking-tighter uppercase hover:bg-rose-500 transition-all shadow-lg shadow-rose-600/20 flex items-center justify-center gap-2"
-                      >
-                        <Download className="w-5 h-5" /> UNDUH PDF
-                      </button>
+                    <div className="mb-10 flex justify-center overflow-hidden rounded-2xl bg-slate-950/50 p-4 border border-slate-800/50 shadow-inner">
+                       <div className="w-full max-w-full overflow-hidden flex justify-center scale-90 sm:scale-100 transition-transform">
+                          <IDCardPreview registration={foundRegistration} />
+                       </div>
                     </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                       <button 
+                        onClick={() => {
+                          setIsEditing(true);
+                          setFoundRegistration(null);
+                          setShowForm(true);
+                        }}
+                        className="w-full py-4 sm:py-5 rounded-2xl bg-slate-800 text-white font-black italic tracking-tighter uppercase hover:bg-slate-700 transition-all text-sm border border-slate-700"
+                       >
+                         UBAH DATA
+                       </button>
+                       <button 
+                        onClick={async () => {
+                          const docId = foundRegistration.type === 'pelatih' ? 'pdf_config_pelatih' : 'pdf_config';
+                          const configDoc = await getDoc(doc(db, 'settings', docId));
+                          const paperSize = configDoc.exists() ? configDoc.data().paperSize : 'id_card';
+                          await generateAndDownloadPDF('id-card-capture', foundRegistration, paperSize);
+                        }}
+                        className="w-full py-4 sm:py-5 rounded-2xl bg-rose-600 text-white font-black italic tracking-tighter uppercase hover:bg-rose-500 transition-all shadow-lg shadow-rose-600/20 text-sm flex items-center justify-center gap-3"
+                       >
+                         <Download size={18} /> UNDUH PDF
+                       </button>
+                    </div>
+                    
                     <button 
                       onClick={() => setFoundRegistration(null)}
-                      className="py-4 rounded-2xl bg-slate-950 text-slate-500 font-black italic tracking-tighter uppercase hover:text-white transition-all text-xs"
+                      className="w-full mt-4 py-4 rounded-2xl bg-slate-950/50 text-slate-500 font-black italic tracking-tighter uppercase hover:text-white transition-all text-xs"
                     >
                       TUTUP
                     </button>
                   </div>
-                </div>
+                </motion.div>
               </div>
             </motion.div>
           )}
