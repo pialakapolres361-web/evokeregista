@@ -129,8 +129,8 @@ export default function AdminDashboard({ config }: AdminDashboardProps) {
     const dataToExport = registrations.map(r => {
       const row: any = {
         'KODE ID': r.id,
-        'NAMA LENGKAP': r.fullName,
-        'TANGGAL DAFTAR': format(r.createdAt, 'yyyy-MM-dd HH:mm')
+        'TANGGAL DAFTAR': format(r.createdAt, 'yyyy-MM-dd HH:mm'),
+        'NAMA LENGKAP': r.fullName
       };
 
       // Tambahkan dynamic fields sesuai urutan di form builder
