@@ -100,8 +100,9 @@ export default function IDCardPreview({ registration, containerRef }: IDCardPrev
         className="relative overflow-hidden rounded-2xl bg-white border border-neutral-100 origin-top"
         style={{ 
           backgroundImage: `url(${config.backgroundUrl})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
+          backgroundSize: config.backgroundSize || 'cover',
+          backgroundPosition: config.backgroundPosition || 'center',
+          backgroundRepeat: 'no-repeat',
           backgroundColor: '#ffffff',
           width: `${designWidth}px`,
           height: `${designHeight}px`,

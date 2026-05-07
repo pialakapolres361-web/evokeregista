@@ -9,7 +9,7 @@ import {
 import { auth, db, logout } from '../lib/firebase';
 import { 
   collection, query, orderBy, onSnapshot, doc, 
-  updateDoc, deleteDoc, getDocs, getDoc, addDoc, setDoc 
+  updateDoc, deleteDoc, getDocs, getDoc, addDoc, setDoc, serverTimestamp 
 } from 'firebase/firestore';
 import { Registration, FormField, WebConfig, PdfConfig } from '../types';
 import * as XLSX from 'xlsx';
@@ -1033,11 +1033,27 @@ function PdfBuilderTab({
 
   const handleSave = async () => {
     if (!currentConfig) return;
+    
+    // Check for large background image (Firestore limit is 1MB)
+    if (currentConfig.backgroundUrl.startsWith('data:') && currentConfig.backgroundUrl.length > 800000) {
+      alert('Ukuran gambar background terlalu besar. Silahkan gunakan gambar dengan ukuran di bawah 800KB atau gunakan URL gambar.');
+      return;
+    }
+
     setSaving(true);
-    const docId = activeRole === 'peserta' ? 'pdf_config' : 'pdf_config_pelatih';
-    await setDoc(doc(db, 'settings', docId), currentConfig as any, { merge: true });
-    setSaving(false);
-    alert(`PDF Layout for ${activeRole.toUpperCase()} saved!`);
+    try {
+      const docId = activeRole === 'peserta' ? 'pdf_config' : 'pdf_config_pelatih';
+      await setDoc(doc(db, 'settings', docId), {
+        ...currentConfig,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+      alert(`Layout PDF ${activeRole.toUpperCase()} berhasil disimpan!`);
+    } catch (error: any) {
+      console.error("Error saving PDF layout:", error);
+      alert(`Gagal menyimpan layout: ${error.message}`);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const toggleField = (fieldId: string) => {
