@@ -145,7 +145,9 @@ export default function PublicHome({ config }: PublicHomeProps) {
                 <div className="p-10">
                   <div className="flex justify-between items-start mb-10">
                     <div className="max-w-[70%]">
-                      <span className="text-[10px] font-black uppercase tracking-[0.3em] text-rose-500">KARTU PESERTA</span>
+                      <span className="text-[10px] font-black uppercase tracking-[0.3em] text-rose-500">
+                        {foundRegistration.type === 'pelatih' ? 'KARTU PELATIH' : 'KARTU PESERTA'}
+                      </span>
                       <h4 className="text-4xl font-black italic tracking-tighter uppercase leading-none mt-2 text-white">{foundRegistration.fullName}</h4>
                     </div>
                     <div className="bg-slate-950 border border-slate-800 px-4 py-2 rounded-xl text-xs font-mono font-black text-rose-500 italic tracking-tighter">

@@ -144,27 +144,35 @@ export default function AdminDashboard({ config }: AdminDashboardProps) {
     (filterRole === 'all' || reg.type === filterRole)
   );
 
-  const handleExport = () => {
-    const dataToExport = filteredRegistrations.map(r => {
-      const row: any = {
-        'KODE ID': r.id,
-        'TIPE': r.type?.toUpperCase() || 'PESERTA',
-        'TANGGAL DAFTAR': format(r.createdAt, 'yyyy-MM-dd HH:mm'),
-        'NAMA LENGKAP': r.fullName
-      };
+  const handleExport = (role: 'peserta' | 'pelatih') => {
+    const dataToExport = registrations
+      .filter(r => r.type === role)
+      .map(r => {
+        const row: any = {
+          'KODE ID': r.id,
+          'TANGGAL DAFTAR': format(r.createdAt, 'yyyy-MM-dd HH:mm'),
+          'NAMA LENGKAP': r.fullName
+        };
 
-      // Tambahkan dynamic fields sesuai urutan di form builder
-      fields.forEach(field => {
-        row[field.label] = r.customFields?.[field.id] || '-';
+        // Filter fields sesuai targetType
+        const relevantFields = fields.filter(f => f.targetType === role || f.targetType === 'keduanya');
+        
+        relevantFields.forEach(field => {
+          row[field.label] = r.customFields?.[field.id] || '-';
+        });
+
+        return row;
       });
 
-      return row;
-    });
+    if (dataToExport.length === 0) {
+      alert(`Tidak ada data ${role} untuk diexport.`);
+      return;
+    }
 
     const ws = XLSX.utils.json_to_sheet(dataToExport);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Pendaftar");
-    XLSX.writeFile(wb, `Data_Pendaftar_Evoka_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, ws, role === 'peserta' ? "Peserta" : "Pelatih");
+    XLSX.writeFile(wb, `Data_${role === 'peserta' ? 'Peserta' : 'Pelatih'}_Evoka_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
   };
 
   return (
@@ -278,12 +286,20 @@ export default function AdminDashboard({ config }: AdminDashboardProps) {
                     <option value="peserta">PESERTA</option>
                     <option value="pelatih">PELATIH</option>
                   </select>
-                  <button 
-                    onClick={handleExport}
-                    className="w-full sm:w-auto flex items-center justify-center gap-3 px-6 md:px-8 py-3 bg-rose-600 text-white rounded-full text-xs font-black italic tracking-tighter hover:bg-rose-500 transition-all shadow-lg shadow-rose-600/20"
-                  >
-                    <Download size={16} /> EXPORT XLSX
-                  </button>
+                  <div className="flex gap-2 w-full sm:w-auto">
+                    <button 
+                      onClick={() => handleExport('peserta')}
+                      className="flex-1 sm:w-auto flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-xl text-[10px] font-black italic tracking-tighter hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20"
+                    >
+                      <Download size={14} /> EXPORT PESERTA
+                    </button>
+                    <button 
+                      onClick={() => handleExport('pelatih')}
+                      className="flex-1 sm:w-auto flex items-center justify-center gap-2 px-4 py-3 bg-amber-600 text-white rounded-xl text-[10px] font-black italic tracking-tighter hover:bg-amber-500 transition-all shadow-lg shadow-amber-600/20"
+                    >
+                      <Download size={14} /> EXPORT PELATIH
+                    </button>
+                  </div>
                 </div>
               </div>
               <div className="overflow-x-auto">
