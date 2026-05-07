@@ -30,8 +30,9 @@ export default function RegistrationForm({ config, type, onSuccess, initialRegis
       
       // Filter fields based on targetType
       const filteredFields = fieldData.filter(f => {
-        if (!type || f.targetType === 'keduanya') return true;
-        return f.targetType === type;
+        const target = f.targetType || 'peserta';
+        if (!type || target === 'keduanya') return true;
+        return target === type;
       });
 
       setFields(filteredFields);

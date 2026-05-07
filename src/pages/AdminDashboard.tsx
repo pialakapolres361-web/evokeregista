@@ -138,6 +138,53 @@ export default function AdminDashboard({ config }: AdminDashboardProps) {
     }
   };
 
+  const handleDeleteAll = (role: 'peserta' | 'pelatih' | 'all') => {
+    const roleText = role === 'all' ? 'SEMUA DATA' : role.toUpperCase();
+    setConfirmModal({
+      isOpen: true,
+      title: `HAPUS ${roleText}`,
+      message: `Apakah anda yakin ingin menghapus ${roleText} pendaftar? Tindakan ini akan menghapus semua data secara permanen dan tidak dapat dibatalkan.`,
+      onConfirm: async () => {
+        try {
+          const targetRegs = role === 'all' 
+            ? registrations 
+            : registrations.filter(r => r.type === role);
+          
+          for (const reg of targetRegs) {
+            await deleteDoc(doc(db, 'registrations', reg.id));
+          }
+          alert(`Berhasil menghapus ${targetRegs.length} data.`);
+        } catch (err) {
+          console.error("Error deleting all registrations:", err);
+          alert('Gagal menghapus data.');
+        }
+      }
+    });
+  };
+
+  const handleDownloadAllPdf = async (role: 'peserta' | 'pelatih') => {
+    const targetRegs = registrations.filter(r => r.type === role);
+    if (targetRegs.length === 0) {
+      alert(`Tidak ada data ${role} untuk diunduh.`);
+      return;
+    }
+
+    const config = role === 'pelatih' ? pdfConfigPelatih : pdfConfigPeserta;
+    
+    setConfirmModal({
+      isOpen: true,
+      title: `UNDUH SEMUA PDF ${role.toUpperCase()}`,
+      message: `Sistem akan mencoba mengunduh ${targetRegs.length} file PDF. Browser mungkin akan meminta izin untuk mengunduh banyak file. Lanjutkan?`,
+      onConfirm: async () => {
+        for (const reg of targetRegs) {
+          await generateAndDownloadPDF('id-card-capture', reg, config?.paperSize);
+          // Beri jeda sedikit agar browser tidak menganggap spam
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
+    });
+  };
+
   const filteredRegistrations = registrations.filter(reg => 
     (reg.fullName.toLowerCase().includes(searchTerm.toLowerCase()) || 
     reg.id.toLowerCase().includes(searchTerm.toLowerCase())) &&
@@ -286,18 +333,46 @@ export default function AdminDashboard({ config }: AdminDashboardProps) {
                     <option value="peserta">PESERTA</option>
                     <option value="pelatih">PELATIH</option>
                   </select>
-                  <div className="flex gap-2 w-full sm:w-auto">
+                  
+                  <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                    {/* Export Excel Buttons */}
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => handleExport('peserta')}
+                        className="flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-xl text-[10px] font-black italic tracking-tighter hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20"
+                      >
+                        <Download size={14} /> EXPORT PESERTA
+                      </button>
+                      <button 
+                        onClick={() => handleExport('pelatih')}
+                        className="flex items-center justify-center gap-2 px-4 py-3 bg-amber-600 text-white rounded-xl text-[10px] font-black italic tracking-tighter hover:bg-amber-500 transition-all shadow-lg shadow-amber-600/20"
+                      >
+                        <Download size={14} /> EXPORT PELATIH
+                      </button>
+                    </div>
+
+                    {/* Download PDF Buttons */}
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => handleDownloadAllPdf('peserta')}
+                        className="flex items-center justify-center gap-2 px-4 py-3 bg-rose-600 text-white rounded-xl text-[10px] font-black italic tracking-tighter hover:bg-rose-500 transition-all shadow-lg shadow-rose-600/20"
+                      >
+                        <FileText size={14} /> PDF PESERTA
+                      </button>
+                      <button 
+                        onClick={() => handleDownloadAllPdf('pelatih')}
+                        className="flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 text-white rounded-xl text-[10px] font-black italic tracking-tighter hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-600/20"
+                      >
+                        <FileText size={14} /> PDF PELATIH
+                      </button>
+                    </div>
+
+                    {/* Danger Zone */}
                     <button 
-                      onClick={() => handleExport('peserta')}
-                      className="flex-1 sm:w-auto flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-xl text-[10px] font-black italic tracking-tighter hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20"
+                      onClick={() => handleDeleteAll('all')}
+                      className="flex items-center justify-center gap-2 px-4 py-3 bg-slate-800 text-rose-500 border border-rose-500/20 rounded-xl text-[10px] font-black italic tracking-tighter hover:bg-rose-500/10 transition-all"
                     >
-                      <Download size={14} /> EXPORT PESERTA
-                    </button>
-                    <button 
-                      onClick={() => handleExport('pelatih')}
-                      className="flex-1 sm:w-auto flex items-center justify-center gap-2 px-4 py-3 bg-amber-600 text-white rounded-xl text-[10px] font-black italic tracking-tighter hover:bg-amber-500 transition-all shadow-lg shadow-amber-600/20"
-                    >
-                      <Download size={14} /> EXPORT PELATIH
+                      <Trash2 size={14} /> HAPUS SEMUA
                     </button>
                   </div>
                 </div>
