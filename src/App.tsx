@@ -22,7 +22,7 @@ const AppContent: React.FC = () => {
         setConfig(snapshot.data() as WebConfig);
       } else {
         setConfig({
-          appName: 'Silat Event Registration',
+          appName: 'Evoka Regist',
           themeColor: '#1d4ed8',
           isOpen: true
         });

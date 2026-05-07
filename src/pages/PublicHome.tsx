@@ -47,7 +47,7 @@ export default function PublicHome({ config }: PublicHomeProps) {
       <header className="bg-[#020617] border-b border-slate-800 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-black tracking-tighter text-rose-500 italic">SILAT.REG</h1>
+            <h1 className="text-3xl font-black tracking-tighter text-rose-500 italic">EVOKA REGIST</h1>
           </div>
           <button 
             onClick={() => window.location.hash = '#/admin'}
