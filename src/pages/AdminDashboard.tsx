@@ -1107,7 +1107,12 @@ function PdfBuilderTab({
                   currentConfig.paperSize === 'b3' ? 'aspect-[353/500] w-[400px]' : 
                   'aspect-[3/2] w-full max-w-[500px]'
                 }`}
-                style={{ backgroundImage: `url(${currentConfig.backgroundUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+                style={{ 
+                  backgroundImage: `url(${currentConfig.backgroundUrl})`, 
+                  backgroundSize: currentConfig.backgroundSize || 'cover', 
+                  backgroundPosition: currentConfig.backgroundPosition || 'center',
+                  backgroundRepeat: 'no-repeat'
+                }}
               >
                  {sortedElementKeys.map((key) => {
                    const item = currentConfig.elements[key];
@@ -1225,6 +1230,32 @@ function PdfBuilderTab({
                   <option value="b2">B2 (PORTRAIT: 500x707mm)</option>
                   <option value="b3">B3 (PORTRAIT: 353x500mm)</option>
                 </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">BACKGROUND SETTINGS</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <select 
+                     value={currentConfig.backgroundSize || 'cover'}
+                     onChange={e => setCurrentConfig({...currentConfig, backgroundSize: e.target.value})}
+                     className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-[10px] font-bold text-white outline-none focus:border-rose-500 appearance-none uppercase"
+                  >
+                    <option value="cover">COVER (PENUH)</option>
+                    <option value="contain">CONTAIN (FIT)</option>
+                    <option value="100% 100%">100% STRETCH</option>
+                    <option value="auto">AUTO</option>
+                  </select>
+                  <select 
+                     value={currentConfig.backgroundPosition || 'center'}
+                     onChange={e => setCurrentConfig({...currentConfig, backgroundPosition: e.target.value})}
+                     className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-[10px] font-bold text-white outline-none focus:border-rose-500 appearance-none uppercase"
+                  >
+                    <option value="center">CENTER</option>
+                    <option value="top">TOP</option>
+                    <option value="bottom">BOTTOM</option>
+                    <option value="left">LEFT</option>
+                    <option value="right">RIGHT</option>
+                  </select>
+                </div>
               </div>
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">BACKGROUND URL / UPLOAD</label>

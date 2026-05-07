@@ -29,6 +29,8 @@ export interface WebConfig {
 
 export interface PdfConfig {
   backgroundUrl: string;
+  backgroundSize?: string;
+  backgroundPosition?: string;
   paperSize?: 'id_card' | 'b2' | 'b3';
   elements: {
     [key: string]: { x: number; y: number; fontSize: number; color?: string; width?: number; height?: number; visible?: boolean };
