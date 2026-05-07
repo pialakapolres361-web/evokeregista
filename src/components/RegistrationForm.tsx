@@ -76,8 +76,8 @@ export default function RegistrationForm({ config, type, onSuccess, initialRegis
         try {
           // Compress and convert to base64
           photoUrl = await compressImageToBase64(photo);
-          if (photoUrl.length > 800000) { // Keep it safe under 1MB Firestore limit
-            throw new Error('Ukuran foto terlalu besar. Silahkan gunakan foto dengan resolusi lebih kecil.');
+          if (photoUrl.length > 950000) { // Closer to 1MB Firestore limit
+            throw new Error('Ukuran foto masih terlalu besar setelah dikompresi. Silahkan gunakan foto dengan resolusi lebih rendah atau perkecil ukuran file (maks 1MB).');
           }
         } catch (compErr: any) {
           console.error('Photo processing failed:', compErr);
@@ -127,8 +127,8 @@ export default function RegistrationForm({ config, type, onSuccess, initialRegis
         img.src = event.target?.result as string;
         img.onload = () => {
           const canvas = document.createElement('canvas');
-          const MAX_WIDTH = 600; 
-          const MAX_HEIGHT = 800;
+          const MAX_WIDTH = 1200; 
+          const MAX_HEIGHT = 1600;
           let width = img.width;
           let height = img.height;
 
@@ -141,8 +141,15 @@ export default function RegistrationForm({ config, type, onSuccess, initialRegis
           canvas.height = height;
           const ctx = canvas.getContext('2d');
           if (!ctx) return reject(new Error('Canvas conversion failed'));
+          
+          // Image smoothing for better quality
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          
           ctx.drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL('image/jpeg', 0.6));
+          
+          // Use higher quality (0.85)
+          resolve(canvas.toDataURL('image/jpeg', 0.85));
         };
         img.onerror = () => reject(new Error('Format gambar tidak didukung'));
       };
