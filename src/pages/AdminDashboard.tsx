@@ -1109,7 +1109,10 @@ function PdfBuilderTab({
                <div className="pt-4 mt-4 border-t border-slate-800">
                  <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-4">DYNAMIC FIELDS ({activeRole.toUpperCase()})</p>
                  <div className="space-y-2">
-                   {fields.filter(f => f.targetType === activeRole || f.targetType === 'keduanya').map(f => (
+                   {fields.filter(f => {
+                     const target = f.targetType || 'peserta';
+                     return target === activeRole || target === 'keduanya';
+                   }).map(f => (
                      <div key={f.id} className="flex gap-2">
                        <button 
                         onClick={() => toggleField(f.id)}
