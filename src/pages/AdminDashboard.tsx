@@ -386,7 +386,7 @@ export default function AdminDashboard({ config }: AdminDashboardProps) {
                       {fields.map(field => (
                         <th key={field.id} className="px-8 py-5 whitespace-nowrap text-center">{field.label}</th>
                       ))}
-                      <th className="px-8 py-5 text-right sticky right-0 bg-slate-950/80 backdrop-blur-md">AKSI</th>
+                      <th className="px-8 py-5 text-right sticky right-0 bg-slate-950 z-10 border-l border-slate-800 shadow-[-10px_0_20px_rgba(0,0,0,0.5)]">AKSI</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800">
@@ -399,27 +399,27 @@ export default function AdminDashboard({ config }: AdminDashboardProps) {
                             {reg.customFields?.[field.id] || '-'}
                           </td>
                         ))}
-                        <td className="px-8 py-5 text-right sticky right-0 bg-slate-900/40 backdrop-blur-md group-hover:bg-slate-800/40 transition-colors">
-                          <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <td className="px-4 md:px-8 py-5 text-right sticky right-0 bg-slate-900 md:bg-slate-900/40 backdrop-blur-md group-hover:bg-slate-800/40 transition-colors z-10 border-l border-slate-800 md:border-l-0">
+                          <div className="flex items-center justify-end gap-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                             <button 
                               onClick={() => setSelectedRegForPdf(reg)}
-                              className="p-2 border border-blue-500/20 hover:bg-blue-600 text-blue-500 hover:text-white rounded-lg transition-colors"
+                              className="p-2.5 bg-blue-600/10 md:bg-transparent border border-blue-500/20 hover:bg-blue-600 text-blue-500 hover:text-white rounded-lg transition-colors"
                               title="Unduh ID Card"
                             >
-                              <FileText size={14} />
+                              <FileText size={16} />
                             </button>
                             <button 
                               onClick={() => setEditingRegistration(reg)}
-                              className="p-2 border border-slate-700 hover:bg-slate-700 rounded-lg transition-colors"
+                              className="p-2.5 bg-slate-800/50 md:bg-transparent border border-slate-700 hover:bg-slate-700 rounded-lg transition-colors text-slate-400 hover:text-white"
                             >
-                              <Edit2 size={14} />
+                              <Edit2 size={16} />
                             </button>
                             <button 
                               onClick={() => handleDeleteRegistration(reg.id)}
-                              className="p-3 bg-slate-950 border border-rose-500/20 hover:bg-rose-500 text-rose-500 hover:text-white rounded-lg transition-all"
+                              className="p-2.5 bg-rose-600/10 md:bg-slate-950 border border-rose-500/20 hover:bg-rose-500 text-rose-500 hover:text-white rounded-lg transition-all"
                               title="Hapus Data"
                             >
-                              <Trash2 size={14} />
+                              <Trash2 size={16} />
                             </button>
                           </div>
                         </td>
