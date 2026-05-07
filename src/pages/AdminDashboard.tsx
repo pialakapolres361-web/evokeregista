@@ -41,7 +41,8 @@ export default function AdminDashboard({ config }: AdminDashboardProps) {
   const [filterRole, setFilterRole] = useState<'all' | 'peserta' | 'pelatih'>('all');
   const [editingRegistration, setEditingRegistration] = useState<Registration | null>(null);
   const [selectedRegForPdf, setSelectedRegForPdf] = useState<Registration | null>(null);
-  const [pdfConfig, setPdfConfig] = useState<PdfConfig | null>(null);
+  const [pdfConfigPeserta, setPdfConfigPeserta] = useState<PdfConfig | null>(null);
+  const [pdfConfigPelatih, setPdfConfigPelatih] = useState<PdfConfig | null>(null);
   const [fields, setFields] = useState<FormField[]>([]);
 
   useEffect(() => {
@@ -55,11 +56,11 @@ export default function AdminDashboard({ config }: AdminDashboardProps) {
       setFields(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FormField)));
     });
 
-    const unsubConfig = onSnapshot(doc(db, 'settings', 'pdf_config'), (snapshot) => {
+    const unsubConfigPeserta = onSnapshot(doc(db, 'settings', 'pdf_config'), (snapshot) => {
       if (snapshot.exists()) {
-        setPdfConfig(snapshot.data() as PdfConfig);
+        setPdfConfigPeserta(snapshot.data() as PdfConfig);
       } else {
-        setPdfConfig({
+        setPdfConfigPeserta({
           backgroundUrl: 'https://images.unsplash.com/photo-1555597673-b21d5c935865?q=80&w=1000',
           paperSize: 'id_card',
           elements: {
@@ -71,7 +72,23 @@ export default function AdminDashboard({ config }: AdminDashboardProps) {
       }
     });
 
-    return () => { unsubRegs(); unsubConfig(); unsubFields(); };
+    const unsubConfigPelatih = onSnapshot(doc(db, 'settings', 'pdf_config_pelatih'), (snapshot) => {
+      if (snapshot.exists()) {
+        setPdfConfigPelatih(snapshot.data() as PdfConfig);
+      } else {
+        setPdfConfigPelatih({
+          backgroundUrl: 'https://images.unsplash.com/photo-1518173946687-a4c8892bbd9f?q=80&w=1000',
+          paperSize: 'id_card',
+          elements: {
+            name: { x: 50, y: 100, fontSize: 24, visible: true },
+            id: { x: 50, y: 150, fontSize: 16, visible: true },
+            photo: { x: 350, y: 50, width: 100, height: 130, visible: true }
+          }
+        });
+      }
+    });
+
+    return () => { unsubRegs(); unsubConfigPeserta(); unsubConfigPelatih(); unsubFields(); };
   }, []);
 
   const downloadRecap = () => {
@@ -324,7 +341,14 @@ export default function AdminDashboard({ config }: AdminDashboardProps) {
           )}
 
           {activeTab === 'form' && <FormBuilderTab />}
-          {activeTab === 'pdf' && <PdfBuilderTab pdfConfig={pdfConfig} setPdfConfig={setPdfConfig} />}
+          {activeTab === 'pdf' && (
+            <PdfBuilderTab 
+              pdfConfigPeserta={pdfConfigPeserta} 
+              setPdfConfigPeserta={setPdfConfigPeserta}
+              pdfConfigPelatih={pdfConfigPelatih}
+              setPdfConfigPelatih={setPdfConfigPelatih}
+            />
+          )}
           {activeTab === 'settings' && <SettingsTab config={config} />}
         </div>
       </main>
@@ -481,7 +505,8 @@ export default function AdminDashboard({ config }: AdminDashboardProps) {
                   </button>
                   <button 
                     onClick={async () => {
-                      await generateAndDownloadPDF('id-card-capture', selectedRegForPdf, pdfConfig?.paperSize);
+                      const config = selectedRegForPdf.type === 'pelatih' ? pdfConfigPelatih : pdfConfigPeserta;
+                      await generateAndDownloadPDF('id-card-capture', selectedRegForPdf, config?.paperSize);
                       setSelectedRegForPdf(null);
                     }}
                     className="flex-1 py-4 rounded-2xl bg-rose-600 text-white font-black italic tracking-tighter uppercase hover:bg-rose-500 transition-all shadow-lg shadow-rose-600/20 flex items-center justify-center gap-2"
@@ -813,12 +838,26 @@ function FormBuilderTab() {
   );
 }
 
-function PdfBuilderTab({ pdfConfig, setPdfConfig }: { pdfConfig: PdfConfig | null, setPdfConfig: (config: PdfConfig) => void }) {
+function PdfBuilderTab({ 
+  pdfConfigPeserta, 
+  setPdfConfigPeserta,
+  pdfConfigPelatih,
+  setPdfConfigPelatih 
+}: { 
+  pdfConfigPeserta: PdfConfig | null, 
+  setPdfConfigPeserta: (config: PdfConfig) => void,
+  pdfConfigPelatih: PdfConfig | null,
+  setPdfConfigPelatih: (config: PdfConfig) => void
+}) {
+  const [activeRole, setActiveRole] = useState<'peserta' | 'pelatih'>('peserta');
   const [fields, setFields] = useState<FormField[]>([]);
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [dragging, setDragging] = useState<{ id: string; startX: number; startY: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const currentConfig = activeRole === 'peserta' ? pdfConfigPeserta : pdfConfigPelatih;
+  const setCurrentConfig = activeRole === 'peserta' ? setPdfConfigPeserta : setPdfConfigPelatih;
 
   useEffect(() => {
     const unsubFields = onSnapshot(query(collection(db, 'form_builder'), orderBy('order', 'asc')), (snapshot) => {
@@ -828,9 +867,9 @@ function PdfBuilderTab({ pdfConfig, setPdfConfig }: { pdfConfig: PdfConfig | nul
   }, []);
 
   const handleMouseDown = (e: React.MouseEvent, id: string) => {
-    if (!pdfConfig) return;
+    if (!currentConfig) return;
     e.preventDefault();
-    const el = pdfConfig.elements[id] as any;
+    const el = currentConfig.elements[id] as any;
     setDragging({
       id,
       startX: e.clientX - el.x,
@@ -841,23 +880,23 @@ function PdfBuilderTab({ pdfConfig, setPdfConfig }: { pdfConfig: PdfConfig | nul
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      if (!dragging || !pdfConfig) return;
+      if (!dragging || !currentConfig) return;
       
       const newX = e.clientX - dragging.startX;
       const newY = e.clientY - dragging.startY;
       
       const newConfig = {
-        ...pdfConfig,
+        ...currentConfig,
         elements: {
-          ...pdfConfig.elements,
+          ...currentConfig.elements,
           [dragging.id]: {
-            ...pdfConfig.elements[dragging.id],
+            ...currentConfig.elements[dragging.id],
             x: Math.round(newX),
             y: Math.round(newY)
           }
         }
       };
-      setPdfConfig(newConfig);
+      setCurrentConfig(newConfig);
     };
 
     const handleMouseUp = () => {
@@ -873,63 +912,64 @@ function PdfBuilderTab({ pdfConfig, setPdfConfig }: { pdfConfig: PdfConfig | nul
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [dragging, pdfConfig, setPdfConfig]);
+  }, [dragging, currentConfig, setCurrentConfig]);
 
   const handleBackgroundUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file && pdfConfig) {
+    if (file && currentConfig) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setPdfConfig({ ...pdfConfig, backgroundUrl: reader.result as string });
+        setCurrentConfig({ ...currentConfig, backgroundUrl: reader.result as string });
       };
       reader.readAsDataURL(file);
     }
   };
 
   const updatePosition = async (element: string, key: string, value: any) => {
-    if (!pdfConfig) return;
+    if (!currentConfig) return;
     const newConfig = { 
-      ...pdfConfig,
+      ...currentConfig,
       elements: {
-        ...pdfConfig.elements,
+        ...currentConfig.elements,
         [element]: {
-          ...pdfConfig.elements[element],
+          ...currentConfig.elements[element],
           [key]: value
         }
       }
     };
-    setPdfConfig(newConfig);
+    setCurrentConfig(newConfig);
   };
 
   const handleSave = async () => {
-    if (!pdfConfig) return;
+    if (!currentConfig) return;
     setSaving(true);
-    await setDoc(doc(db, 'settings', 'pdf_config'), pdfConfig as any, { merge: true });
+    const docId = activeRole === 'peserta' ? 'pdf_config' : 'pdf_config_pelatih';
+    await setDoc(doc(db, 'settings', docId), currentConfig as any, { merge: true });
     setSaving(false);
-    alert('PDF Layout saved!');
+    alert(`PDF Layout for ${activeRole.toUpperCase()} saved!`);
   };
 
   const toggleField = (fieldId: string) => {
-    if (!pdfConfig) return;
-    const current = pdfConfig.elements[fieldId];
+    if (!currentConfig) return;
+    const current = currentConfig.elements[fieldId];
     if (current) {
-       const newElements = { ...pdfConfig.elements };
+       const newElements = { ...currentConfig.elements };
        delete newElements[fieldId];
-       setPdfConfig({ ...pdfConfig, elements: newElements });
+       setCurrentConfig({ ...currentConfig, elements: newElements });
     } else {
-       setPdfConfig({
-         ...pdfConfig,
+       setCurrentConfig({
+         ...currentConfig,
          elements: {
-           ...pdfConfig.elements,
+           ...currentConfig.elements,
            [fieldId]: { x: 50, y: 200, fontSize: 14, visible: true }
          }
        });
     }
   };
 
-  if (!pdfConfig) return <div className="p-12 flex justify-center"><Loader2 className="animate-spin text-rose-500" size={40} /></div>;
+  if (!currentConfig) return <div className="p-12 flex justify-center"><Loader2 className="animate-spin text-rose-500" size={40} /></div>;
 
-  const sortedElementKeys = Object.keys(pdfConfig.elements).sort((a, b) => {
+  const sortedElementKeys = Object.keys(currentConfig.elements).sort((a, b) => {
     const coreOrder = ['photo', 'name', 'id'];
     const idxA = coreOrder.indexOf(a);
     const idxB = coreOrder.indexOf(b);
@@ -944,306 +984,308 @@ function PdfBuilderTab({ pdfConfig, setPdfConfig }: { pdfConfig: PdfConfig | nul
   });
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-8 lg:h-full items-start">
-      <div className="space-y-6">
-         <div className="bg-slate-900 p-4 sm:p-10 rounded-[32px] border border-slate-800 shadow-2xl relative overflow-hidden flex flex-col items-center justify-center min-h-[400px] sm:min-h-[600px] bg-grid-slate-800/[0.1]">
-            <div className="absolute top-6 left-6 flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">LIVE PREVIEW ENGINE</span>
-            </div>
-            
-             <div 
-              className={`relative bg-white border border-slate-700 shadow-[0_0_100px_rgba(0,0,0,0.5)] overflow-hidden rounded-lg transition-all duration-300 ${
-                dragging ? 'cursor-grabbing' : ''
-              } ${
-                pdfConfig.paperSize === 'b2' ? 'aspect-[500/707] w-[400px]' : 
-                pdfConfig.paperSize === 'b3' ? 'aspect-[353/500] w-[400px]' : 
-                'aspect-[3/2] w-full max-w-[500px]'
-              }`}
-              style={{ backgroundImage: `url(${pdfConfig.backgroundUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
-            >
-               {sortedElementKeys.map((key) => {
-                 const item = pdfConfig.elements[key];
-                 const el = item as { x: number; y: number; fontSize: number; color?: string; width?: number; height?: number };
-                 const isDragging = dragging?.id === key;
+    <div className="space-y-6">
+      <div className="flex gap-4 mb-6">
+        <button 
+          onClick={() => setActiveRole('peserta')}
+          className={`px-8 py-3 rounded-2xl font-black italic tracking-tighter uppercase transition-all ${activeRole === 'peserta' ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/20' : 'bg-slate-900 text-slate-500 border border-slate-800'}`}
+        >
+          Visual Peserta
+        </button>
+        <button 
+          onClick={() => setActiveRole('pelatih')}
+          className={`px-8 py-3 rounded-2xl font-black italic tracking-tighter uppercase transition-all ${activeRole === 'pelatih' ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/20' : 'bg-slate-900 text-slate-500 border border-slate-800'}`}
+        >
+          Visual Pelatih
+        </button>
+      </div>
 
-                 if (key === 'photo') {
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-8 lg:h-full items-start">
+        <div className="space-y-6">
+           <div className="bg-slate-900 p-4 sm:p-10 rounded-[32px] border border-slate-800 shadow-2xl relative overflow-hidden flex flex-col items-center justify-center min-h-[400px] sm:min-h-[600px] bg-grid-slate-800/[0.1]">
+              <div className="absolute top-6 left-6 flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">LIVE PREVIEW ENGINE — {activeRole.toUpperCase()}</span>
+              </div>
+              
+               <div 
+                className={`relative bg-white border border-slate-700 shadow-[0_0_100px_rgba(0,0,0,0.5)] overflow-hidden rounded-lg transition-all duration-300 ${
+                  dragging ? 'cursor-grabbing' : ''
+                } ${
+                  currentConfig.paperSize === 'b2' ? 'aspect-[500/707] w-[400px]' : 
+                  currentConfig.paperSize === 'b3' ? 'aspect-[353/500] w-[400px]' : 
+                  'aspect-[3/2] w-full max-w-[500px]'
+                }`}
+                style={{ backgroundImage: `url(${currentConfig.backgroundUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+              >
+                 {sortedElementKeys.map((key) => {
+                   const item = currentConfig.elements[key];
+                   const el = item as { x: number; y: number; fontSize: number; color?: string; width?: number; height?: number };
+                   const isDragging = dragging?.id === key;
+
+                   if (key === 'photo') {
+                     return (
+                      <div 
+                        key={key}
+                        onMouseDown={(e) => handleMouseDown(e, key)}
+                        className={`absolute border-2 border-dashed bg-slate-200/50 flex items-center justify-center transition-shadow cursor-move ${
+                          isDragging ? 'z-50 shadow-2xl scale-105' : ''
+                        } ${selectedElement === key ? 'border-rose-500 ring-4 ring-rose-500/20 opacity-100' : 'border-slate-400 opacity-50'}`}
+                        style={{ 
+                          left: el.x, 
+                          top: el.y, 
+                          width: el.width, 
+                          height: el.height,
+                          transform: 'translateX(-50%)'
+                        }}
+                      >
+                        <ImageIcon className="text-slate-500" />
+                      </div>
+                     );
+                   }
                    return (
                     <div 
                       key={key}
                       onMouseDown={(e) => handleMouseDown(e, key)}
-                      className={`absolute border-2 border-dashed bg-slate-200/50 flex items-center justify-center transition-shadow cursor-move ${
-                        isDragging ? 'z-50 shadow-2xl scale-105' : ''
-                      } ${selectedElement === key ? 'border-rose-500 ring-4 ring-rose-500/20 opacity-100' : 'border-slate-400 opacity-50'}`}
+                      className={`absolute select-none cursor-move font-bold whitespace-nowrap px-2 -mx-2 transition-all border-2 border-transparent ${
+                        isDragging ? 'z-50 scale-105 opacity-100' : ''
+                      } ${selectedElement === key ? 'bg-rose-500/10 border-rose-500 ring-4 ring-rose-500/10' : 'border-dashed border-slate-300 hover:border-rose-500/50'}`}
                       style={{ 
                         left: el.x, 
                         top: el.y, 
-                        width: el.width, 
-                        height: el.height,
+                        fontSize: el.fontSize, 
+                        color: el.color || '#000000',
+                        textAlign: 'center',
                         transform: 'translateX(-50%)'
                       }}
                     >
-                      <ImageIcon className="text-slate-500" />
+                      {key === 'name' ? 'SAMPLE NAME' : key === 'id' ? 'SILAT-XXXXX' : fields.find(f => f.id === key)?.label || key}
                     </div>
                    );
-                 }
-                 return (
-                  <div 
-                    key={key}
-                    onMouseDown={(e) => handleMouseDown(e, key)}
-                    className={`absolute select-none cursor-move font-bold whitespace-nowrap px-2 -mx-2 transition-all border-2 border-transparent ${
-                      isDragging ? 'z-50 scale-105 opacity-100' : ''
-                    } ${selectedElement === key ? 'bg-rose-500/10 border-rose-500 ring-4 ring-rose-500/10' : 'border-dashed border-slate-300 hover:border-rose-500/50'}`}
-                    style={{ 
-                      left: el.x, 
-                      top: el.y, 
-                      fontSize: el.fontSize, 
-                      color: el.color || '#000000',
-                      textAlign: 'center',
-                      transform: 'translateX(-50%)'
-                    }}
-                  >
-                    {key === 'name' ? 'SAMPLE NAME' : key === 'id' ? 'SILAT-XXXXX' : fields.find(f => f.id === key)?.label || key}
-                  </div>
-                 );
-               })}
-            </div>
+                 })}
+              </div>
 
-            <div className="mt-12 flex gap-4">
-              <button onClick={handleSave} disabled={saving} className="px-10 py-4 bg-rose-600 text-white rounded-2xl font-black italic tracking-tighter uppercase shadow-xl shadow-rose-600/20 hover:bg-rose-500 transition-all flex items-center gap-2">
-                {saving ? <Loader2 className="animate-spin" /> : <><Save size={18} /> SAVE LAYOUT</>}
-              </button>
-            </div>
-         </div>
-      </div>
-      
-      <div className="space-y-6 lg:h-[calc(100vh-180px)] lg:overflow-y-auto lg:pr-2 custom-scrollbar">
-        {/* Layer Manager */}
-        <div className="bg-slate-900 rounded-[32px] border border-slate-800 p-6 sm:p-8 shadow-xl">
-          <h3 className="text-sm font-black italic uppercase tracking-widest text-white mb-6 flex items-center gap-2">
-            <Layout size={16} className="text-rose-500" /> LAYERS & ELEMENTS
-          </h3>
-          <div className="space-y-3">
-             {['name', 'id', 'photo'].map(core => (
-               <button 
-                key={core}
-                onClick={() => setSelectedElement(core)}
-                className={`w-full flex items-center justify-between px-5 py-4 rounded-xl border transition-all ${selectedElement === core ? 'bg-rose-500 border-rose-400 text-white' : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-600'}`}
-               >
-                 <span className="text-[10px] font-black uppercase tracking-widest">{core}</span>
-                 <Edit2 size={12} className={selectedElement === core ? 'text-white' : 'text-slate-600'} />
-               </button>
-             ))}
-             <div className="pt-4 mt-4 border-t border-slate-800">
-               <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-4">DYNAMIC FIELDS</p>
-               <div className="space-y-2">
-                 {fields.map(f => (
-                   <div key={f.id} className="flex gap-2">
-                     <button 
-                      onClick={() => toggleField(f.id)}
-                      className={`w-10 h-12 rounded-xl border flex items-center justify-center transition-all ${pdfConfig.elements[f.id] ? 'bg-rose-600 border-rose-400 text-white' : 'bg-slate-950 border-slate-800 text-slate-700'}`}
-                     >
-                       {pdfConfig.elements[f.id] ? <Check size={16} /> : <Plus size={16} />}
-                     </button>
-                     <button 
-                      onClick={() => setSelectedElement(f.id)}
-                      disabled={!pdfConfig.elements[f.id]}
-                      className={`flex-1 flex items-center justify-between px-5 py-3 rounded-xl border transition-all ${selectedElement === f.id ? 'bg-rose-500 border-rose-400 text-white' : 'bg-slate-950 border-slate-800 text-slate-400 disabled:opacity-30'}`}
-                     >
-                        <span className="text-[10px] font-black uppercase tracking-widest truncate">{f.label}</span>
-                        {pdfConfig.elements[f.id] && <Edit2 size={12} />}
-                     </button>
-                   </div>
-                 ))}
-               </div>
-             </div>
-          </div>
-        </div>
-
-        {/* Global Settings */}
-        <div className="bg-slate-900 rounded-[32px] border border-slate-800 p-6 sm:p-8 shadow-xl">
-          <h3 className="text-sm font-black italic uppercase tracking-widest text-white mb-6">GLOBAL SETTINGS</h3>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">PAPER SIZE</label>
-              <select 
-                 value={pdfConfig.paperSize || 'id_card'}
-                 onChange={e => setPdfConfig({...pdfConfig, paperSize: e.target.value as any})}
-                 className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-[10px] font-bold text-white outline-none focus:border-rose-500 appearance-none uppercase"
-              >
-                <option value="id_card">ID CARD (LANDSCAPE)</option>
-                <option value="b2">B2 (PORTRAIT: 500x707mm)</option>
-                <option value="b3">B3 (PORTRAIT: 353x500mm)</option>
-              </select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">BACKGROUND URL / UPLOAD</label>
-              <div className="flex gap-2">
-                <input 
-                   value={pdfConfig.backgroundUrl}
-                   onChange={e => setPdfConfig({...pdfConfig, backgroundUrl: e.target.value})}
-                   placeholder="https://..."
-                   className="flex-1 px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-[10px] font-bold text-white outline-none focus:border-rose-500"
-                />
-                <input 
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleBackgroundUpload}
-                  accept="image/*"
-                  className="hidden"
-                />
-                <button 
-                  onClick={() => fileInputRef.current?.click()}
-                  className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl transition-all flex items-center justify-center gap-2 border border-slate-700"
-                  title="Upload Background"
-                >
-                  <Upload size={14} />
+              <div className="mt-12 flex gap-4">
+                <button onClick={handleSave} disabled={saving} className="px-10 py-4 bg-rose-600 text-white rounded-2xl font-black italic tracking-tighter uppercase shadow-xl shadow-rose-600/20 hover:bg-rose-500 transition-all flex items-center gap-2">
+                  {saving ? <Loader2 className="animate-spin" /> : <><Save size={18} /> SAVE LAYOUT</>}
                 </button>
               </div>
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                'https://images.unsplash.com/photo-1555597673-b21d5c935865?q=80&w=1000',
-                'https://images.unsplash.com/photo-1518173946687-a4c8892bbd9f?q=80&w=1000',
-                'https://images.unsplash.com/photo-1621509411964-b78f447738bc?q=80&w=1000'
-              ].map((url, i) => (
-                <button 
-                  key={i} 
-                  onClick={() => setPdfConfig({...pdfConfig, backgroundUrl: url})}
-                  className="aspect-video rounded-lg border border-slate-800 overflow-hidden hover:border-rose-500 transition-all"
-                >
-                  <img src={url} className="w-full h-full object-cover" alt={`Preset ${i}`} />
-                </button>
-              ))}
+           </div>
+        </div>
+        
+        <div className="space-y-6 lg:h-[calc(100vh-180px)] lg:overflow-y-auto lg:pr-2 custom-scrollbar">
+          {/* Layer Manager */}
+          <div className="bg-slate-900 rounded-[32px] border border-slate-800 p-6 sm:p-8 shadow-xl">
+            <h3 className="text-sm font-black italic uppercase tracking-widest text-white mb-6 flex items-center gap-2">
+              <Layout size={16} className="text-rose-500" /> LAYERS & ELEMENTS
+            </h3>
+            <div className="space-y-3">
+               {['name', 'id', 'photo'].map(core => (
+                 <button 
+                  key={core}
+                  onClick={() => setSelectedElement(core)}
+                  className={`w-full flex items-center justify-between px-5 py-4 rounded-xl border transition-all ${selectedElement === core ? 'bg-rose-500 border-rose-400 text-white' : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-600'}`}
+                 >
+                   <span className="text-[10px] font-black uppercase tracking-widest">{core}</span>
+                   <Edit2 size={12} className={selectedElement === core ? 'text-white' : 'text-slate-600'} />
+                 </button>
+               ))}
+               <div className="pt-4 mt-4 border-t border-slate-800">
+                 <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-4">DYNAMIC FIELDS ({activeRole.toUpperCase()})</p>
+                 <div className="space-y-2">
+                   {fields.filter(f => f.targetType === activeRole || f.targetType === 'keduanya').map(f => (
+                     <div key={f.id} className="flex gap-2">
+                       <button 
+                        onClick={() => toggleField(f.id)}
+                        className={`w-10 h-12 rounded-xl border flex items-center justify-center transition-all ${currentConfig.elements[f.id] ? 'bg-rose-600 border-rose-400 text-white' : 'bg-slate-950 border-slate-800 text-slate-700'}`}
+                       >
+                         {currentConfig.elements[f.id] ? <Check size={16} /> : <Plus size={16} />}
+                       </button>
+                       <button 
+                        onClick={() => setSelectedElement(f.id)}
+                        disabled={!currentConfig.elements[f.id]}
+                        className={`flex-1 flex items-center justify-between px-5 py-3 rounded-xl border transition-all ${selectedElement === f.id ? 'bg-rose-500 border-rose-400 text-white' : 'bg-slate-950 border-slate-800 text-slate-400 disabled:opacity-30'}`}
+                       >
+                          <span className="text-[10px] font-black uppercase tracking-widest truncate">{f.label}</span>
+                          {currentConfig.elements[f.id] && <Edit2 size={12} />}
+                       </button>
+                     </div>
+                   ))}
+                 </div>
+               </div>
             </div>
           </div>
-        </div>
 
-        {/* Element Editor */}
-        {selectedElement && pdfConfig.elements[selectedElement] && (() => {
-          const el = pdfConfig.elements[selectedElement] as any;
-          return (
-            <div className="bg-slate-900 rounded-[32px] border border-rose-500/30 p-8 shadow-2xl relative overflow-hidden">
-              <div className="relative z-10">
-                <div className="flex items-center justify-between mb-8">
-                  <h3 className="text-xl font-black italic tracking-tighter uppercase text-white">EDIT: {selectedElement}</h3>
-                  <button onClick={() => setSelectedElement(null)} className="text-slate-500 hover:text-white"><X size={20} /></button>
+          {/* Global Settings */}
+          <div className="bg-slate-900 rounded-[32px] border border-slate-800 p-6 sm:p-8 shadow-xl">
+            <h3 className="text-sm font-black italic uppercase tracking-widest text-white mb-6">GLOBAL SETTINGS</h3>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">PAPER SIZE</label>
+                <select 
+                   value={currentConfig.paperSize || 'id_card'}
+                   onChange={e => setCurrentConfig({...currentConfig, paperSize: e.target.value as any})}
+                   className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-[10px] font-bold text-white outline-none focus:border-rose-500 appearance-none uppercase"
+                >
+                  <option value="id_card">ID CARD (LANDSCAPE)</option>
+                  <option value="b2">B2 (PORTRAIT: 500x707mm)</option>
+                  <option value="b3">B3 (PORTRAIT: 353x500mm)</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">BACKGROUND URL / UPLOAD</label>
+                <div className="flex gap-2">
+                  <input 
+                     value={currentConfig.backgroundUrl}
+                     onChange={e => setCurrentConfig({...currentConfig, backgroundUrl: e.target.value})}
+                     placeholder="https://..."
+                     className="flex-1 px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-[10px] font-bold text-white outline-none focus:border-rose-500"
+                  />
+                  <input 
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleBackgroundUpload}
+                    accept="image/*"
+                    className="hidden"
+                  />
+                  <button 
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl transition-all flex items-center justify-center gap-2 border border-slate-700"
+                    title="Upload Background"
+                  >
+                    <Upload size={14} />
+                  </button>
                 </div>
+              </div>
+            </div>
+          </div>
 
-                <div className="space-y-8">
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">POSITION X</label>
-                      <span className="text-[10px] font-black text-rose-500">{el.x}px</span>
-                    </div>
-                    <div className="flex gap-4 items-center">
-                      <input 
-                        type="range" min="0" max="1000" step="1"
-                        value={el.x}
-                        onChange={(e) => updatePosition(selectedElement, 'x', parseInt(e.target.value))}
-                        className="flex-1 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-rose-600"
-                      />
-                      <input 
-                        type="number"
-                        value={el.x}
-                        onChange={(e) => updatePosition(selectedElement, 'x', parseInt(e.target.value) || 0)}
-                        className="w-20 px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs font-bold text-white outline-none focus:border-rose-500"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">POSITION Y</label>
-                      <span className="text-[10px] font-black text-rose-500">{el.y}px</span>
-                    </div>
-                    <div className="flex gap-4 items-center">
-                      <input 
-                        type="range" min="0" max="1000" step="1"
-                        value={el.y}
-                        onChange={(e) => updatePosition(selectedElement, 'y', parseInt(e.target.value))}
-                        className="flex-1 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-rose-600"
-                      />
-                      <input 
-                        type="number"
-                        value={el.y}
-                        onChange={(e) => updatePosition(selectedElement, 'y', parseInt(e.target.value) || 0)}
-                        className="w-20 px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs font-bold text-white outline-none focus:border-rose-500"
-                      />
-                    </div>
+          {/* Element Editor */}
+          {selectedElement && currentConfig.elements[selectedElement] && (() => {
+            const el = currentConfig.elements[selectedElement] as any;
+            return (
+              <div className="bg-slate-900 rounded-[32px] border border-rose-500/30 p-8 shadow-2xl relative overflow-hidden">
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between mb-8">
+                    <h3 className="text-xl font-black italic tracking-tighter uppercase text-white">EDIT: {selectedElement}</h3>
+                    <button onClick={() => setSelectedElement(null)} className="text-slate-500 hover:text-white"><X size={20} /></button>
                   </div>
 
-                  {selectedElement !== 'photo' && (
+                  <div className="space-y-8">
                     <div className="space-y-3">
                       <div className="flex justify-between">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">FONT COLOR</label>
-                        <span className="text-[10px] font-black text-rose-500 uppercase">{el.color || '#000000'}</span>
-                      </div>
-                      <div className="flex gap-2">
-                        <input 
-                          type="color"
-                          value={el.color || '#000000'}
-                          onChange={(e) => updatePosition(selectedElement, 'color', e.target.value)}
-                          className="w-12 h-12 rounded-xl bg-slate-950 border border-slate-800 cursor-pointer overflow-hidden p-0"
-                        />
-                        <input 
-                          type="text"
-                          value={el.color || '#000000'}
-                          onChange={(e) => updatePosition(selectedElement, 'color', e.target.value)}
-                          placeholder="#000000"
-                          className="flex-1 px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white outline-none focus:border-rose-500"
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {selectedElement !== 'photo' ? (
-                    <div className="space-y-3">
-                      <div className="flex justify-between">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">FONT SIZE</label>
-                        <span className="text-[10px] font-black text-rose-500">{el.fontSize}px</span>
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">POSITION X</label>
+                        <span className="text-[10px] font-black text-rose-500">{el.x}px</span>
                       </div>
                       <div className="flex gap-4 items-center">
                         <input 
-                          type="range" min="8" max="150" step="1"
-                          value={el.fontSize}
-                          onChange={(e) => updatePosition(selectedElement, 'fontSize', parseInt(e.target.value))}
+                          type="range" min="0" max="1000" step="1"
+                          value={el.x}
+                          onChange={(e) => updatePosition(selectedElement, 'x', parseInt(e.target.value))}
                           className="flex-1 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-rose-600"
                         />
                         <input 
                           type="number"
-                          value={el.fontSize}
-                          onChange={(e) => updatePosition(selectedElement, 'fontSize', parseInt(e.target.value) || 0)}
+                          value={el.x}
+                          onChange={(e) => updatePosition(selectedElement, 'x', parseInt(e.target.value) || 0)}
                           className="w-20 px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs font-bold text-white outline-none focus:border-rose-500"
                         />
                       </div>
                     </div>
-                  ) : (
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-3">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">WIDTH</label>
-                        <input 
-                          type="number"
-                          value={el.width}
-                          onChange={(e) => updatePosition(selectedElement, 'width', parseInt(e.target.value))}
-                          className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white outline-none"
-                        />
+                    <div className="space-y-3">
+                      <div className="flex justify-between">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">POSITION Y</label>
+                        <span className="text-[10px] font-black text-rose-500">{el.y}px</span>
                       </div>
-                      <div className="space-y-3">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">HEIGHT</label>
+                      <div className="flex gap-4 items-center">
+                        <input 
+                          type="range" min="0" max="1000" step="1"
+                          value={el.y}
+                          onChange={(e) => updatePosition(selectedElement, 'y', parseInt(e.target.value))}
+                          className="flex-1 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-rose-600"
+                        />
                         <input 
                           type="number"
-                          value={el.height}
-                          onChange={(e) => updatePosition(selectedElement, 'height', parseInt(e.target.value))}
-                          className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white outline-none"
+                          value={el.y}
+                          onChange={(e) => updatePosition(selectedElement, 'y', parseInt(e.target.value) || 0)}
+                          className="w-20 px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs font-bold text-white outline-none focus:border-rose-500"
                         />
                       </div>
                     </div>
-                  )}
+
+                    {selectedElement !== 'photo' && (
+                      <div className="space-y-3">
+                        <div className="flex justify-between">
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">FONT COLOR</label>
+                          <span className="text-[10px] font-black text-rose-500 uppercase">{el.color || '#000000'}</span>
+                        </div>
+                        <div className="flex gap-2">
+                          <input 
+                            type="color"
+                            value={el.color || '#000000'}
+                            onChange={(e) => updatePosition(selectedElement, 'color', e.target.value)}
+                            className="w-12 h-12 rounded-xl bg-slate-950 border border-slate-800 cursor-pointer overflow-hidden p-0"
+                          />
+                          <input 
+                            type="text"
+                            value={el.color || '#000000'}
+                            onChange={(e) => updatePosition(selectedElement, 'color', e.target.value)}
+                            placeholder="#000000"
+                            className="flex-1 px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white outline-none focus:border-rose-500"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedElement !== 'photo' ? (
+                      <div className="space-y-3">
+                        <div className="flex justify-between">
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">FONT SIZE</label>
+                          <span className="text-[10px] font-black text-rose-500">{el.fontSize}px</span>
+                        </div>
+                        <div className="flex gap-4 items-center">
+                          <input 
+                            type="range" min="8" max="150" step="1"
+                            value={el.fontSize}
+                            onChange={(e) => updatePosition(selectedElement, 'fontSize', parseInt(e.target.value))}
+                            className="flex-1 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-rose-600"
+                          />
+                          <input 
+                            type="number"
+                            value={el.fontSize}
+                            onChange={(e) => updatePosition(selectedElement, 'fontSize', parseInt(e.target.value) || 0)}
+                            className="w-20 px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs font-bold text-white outline-none focus:border-rose-500"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-3">
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">WIDTH</label>
+                          <input 
+                            type="number"
+                            value={el.width}
+                            onChange={(e) => updatePosition(selectedElement, 'width', parseInt(e.target.value))}
+                            className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white outline-none"
+                          />
+                        </div>
+                        <div className="space-y-3">
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">HEIGHT</label>
+                          <input 
+                            type="number"
+                            value={el.height}
+                            onChange={(e) => updatePosition(selectedElement, 'height', parseInt(e.target.value))}
+                            className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white outline-none"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })()}
+            );
+          })()}
+        </div>
       </div>
     </div>
   );

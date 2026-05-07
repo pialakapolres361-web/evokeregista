@@ -16,13 +16,16 @@ export default function IDCardPreview({ registration, containerRef }: IDCardPrev
   const [scale, setScale] = useState(1);
 
   useEffect(() => {
-    // Fetch both PDF config and Form fields to ensure correct ordering
-    const unsubPdf = onSnapshot(doc(db, 'settings', 'pdf_config'), (snapshot) => {
+    // Fetch the correct PDF config based on registration type
+    const docId = registration.type === 'pelatih' ? 'pdf_config_pelatih' : 'pdf_config';
+    const unsubPdf = onSnapshot(doc(db, 'settings', docId), (snapshot) => {
       if (snapshot.exists()) {
         setConfig(snapshot.data() as PdfConfig);
       } else {
         setConfig({
-          backgroundUrl: 'https://images.unsplash.com/photo-1555597673-b21d5c935865?auto=format&fit=crop&q=80&w=1000',
+          backgroundUrl: registration.type === 'pelatih' 
+            ? 'https://images.unsplash.com/photo-1518173946687-a4c8892bbd9f?auto=format&fit=crop&q=80&w=1000'
+            : 'https://images.unsplash.com/photo-1555597673-b21d5c935865?auto=format&fit=crop&q=80&w=1000',
           elements: {
             name: { x: 50, y: 150, fontSize: 24, visible: true },
             id: { x: 50, y: 180, fontSize: 16, visible: true },
