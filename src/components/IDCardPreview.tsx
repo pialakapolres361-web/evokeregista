@@ -85,8 +85,8 @@ export default function IDCardPreview({ registration, containerRef }: IDCardPrev
     return (fieldA?.order || 0) - (fieldB?.order || 0);
   });
 
-  const designWidth = config.paperSize?.startsWith('b') ? 350 : 450;
-  const designHeight = config.paperSize?.startsWith('b') ? 495 : 300;
+  const designWidth = 500;
+  const designHeight = config.paperSize === 'b2' ? 707 : config.paperSize === 'b3' ? 708 : 315;
 
   return (
     <div 

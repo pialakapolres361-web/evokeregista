@@ -1119,9 +1119,9 @@ function PdfBuilderTab({
                 className={`relative bg-white border border-slate-700 shadow-[0_0_100px_rgba(0,0,0,0.5)] overflow-hidden rounded-lg transition-all duration-300 ${
                   dragging ? 'cursor-grabbing' : ''
                 } ${
-                  currentConfig.paperSize === 'b2' ? 'aspect-[500/707] w-[400px]' : 
-                  currentConfig.paperSize === 'b3' ? 'aspect-[353/500] w-[400px]' : 
-                  'aspect-[3/2] w-full max-w-[500px]'
+                  currentConfig.paperSize === 'b2' ? 'aspect-[500/707] w-[500px]' : 
+                  currentConfig.paperSize === 'b3' ? 'aspect-[353/500] w-[500px]' : 
+                  'aspect-[500/315] w-[500px]'
                 }`}
                 style={{ 
                   backgroundImage: `url(${currentConfig.backgroundUrl})`, 
