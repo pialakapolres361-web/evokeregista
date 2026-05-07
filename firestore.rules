@@ -31,9 +31,10 @@ service cloud.firestore {
     }
 
     function isValidRegistration(data) {
-      return data.keys().hasAll(['id', 'fullName', 'createdAt'])
+      return data.keys().hasAll(['id', 'fullName', 'type', 'createdAt'])
         && data.id is string && data.id.size() <= 100
         && data.fullName is string && data.fullName.size() <= 400
+        && data.type in ['peserta', 'pelatih']
         && (data.createdAt is int || data.createdAt is timestamp);
     }
 
