@@ -8,11 +8,12 @@ import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 
 interface RegistrationFormProps {
   config: WebConfig;
+  type?: 'peserta' | 'pelatih';
   onSuccess: (reg: Registration) => void;
   initialRegistration?: Registration;
 }
 
-export default function RegistrationForm({ config, onSuccess, initialRegistration }: RegistrationFormProps) {
+export default function RegistrationForm({ config, type, onSuccess, initialRegistration }: RegistrationFormProps) {
   const [fields, setFields] = useState<FormField[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -26,7 +27,14 @@ export default function RegistrationForm({ config, onSuccess, initialRegistratio
     const q = query(collection(db, 'form_builder'), orderBy('order', 'asc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const fieldData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FormField));
-      setFields(fieldData);
+      
+      // Filter fields based on targetType
+      const filteredFields = fieldData.filter(f => {
+        if (!type || f.targetType === 'keduanya') return true;
+        return f.targetType === type;
+      });
+
+      setFields(filteredFields);
       
       // Initialize form data if editing
       if (initialRegistration) {
@@ -39,7 +47,7 @@ export default function RegistrationForm({ config, onSuccess, initialRegistratio
       setLoading(false);
     });
     return () => unsubscribe();
-  }, [initialRegistration]);
+  }, [initialRegistration, type]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -82,6 +90,7 @@ export default function RegistrationForm({ config, onSuccess, initialRegistratio
       const registrationData: Registration = {
         id: regId,
         fullName: fullName || '',
+        type: (initialRegistration?.type || type || 'peserta') as 'peserta' | 'pelatih',
         photoUrl: photoUrl,
         customFields: rest,
         createdAt: timestamp,

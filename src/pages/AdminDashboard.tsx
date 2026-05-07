@@ -38,6 +38,7 @@ export default function AdminDashboard({ config }: AdminDashboardProps) {
     onConfirm: () => {},
   });
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterRole, setFilterRole] = useState<'all' | 'peserta' | 'pelatih'>('all');
   const [editingRegistration, setEditingRegistration] = useState<Registration | null>(null);
   const [selectedRegForPdf, setSelectedRegForPdf] = useState<Registration | null>(null);
   const [pdfConfig, setPdfConfig] = useState<PdfConfig | null>(null);
@@ -121,14 +122,16 @@ export default function AdminDashboard({ config }: AdminDashboardProps) {
   };
 
   const filteredRegistrations = registrations.filter(reg => 
-    reg.fullName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    reg.id.toLowerCase().includes(searchTerm.toLowerCase())
+    (reg.fullName.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    reg.id.toLowerCase().includes(searchTerm.toLowerCase())) &&
+    (filterRole === 'all' || reg.type === filterRole)
   );
 
   const handleExport = () => {
-    const dataToExport = registrations.map(r => {
+    const dataToExport = filteredRegistrations.map(r => {
       const row: any = {
         'KODE ID': r.id,
+        'TIPE': r.type?.toUpperCase() || 'PESERTA',
         'TANGGAL DAFTAR': format(r.createdAt, 'yyyy-MM-dd HH:mm'),
         'NAMA LENGKAP': r.fullName
       };
@@ -248,7 +251,16 @@ export default function AdminDashboard({ config }: AdminDashboardProps) {
                     className="w-full pl-12 pr-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold tracking-wider focus:border-rose-500 outline-none uppercase text-white" 
                   />
                 </div>
-                <div className="flex items-center gap-3 w-full sm:w-auto">
+                <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+                  <select 
+                    value={filterRole}
+                    onChange={(e) => setFilterRole(e.target.value as any)}
+                    className="w-full sm:w-auto px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-[10px] font-bold text-white outline-none focus:border-rose-500 appearance-none uppercase"
+                  >
+                    <option value="all">SEMUA TIPE</option>
+                    <option value="peserta">PESERTA</option>
+                    <option value="pelatih">PELATIH</option>
+                  </select>
                   <button 
                     onClick={handleExport}
                     className="w-full sm:w-auto flex items-center justify-center gap-3 px-6 md:px-8 py-3 bg-rose-600 text-white rounded-full text-xs font-black italic tracking-tighter hover:bg-rose-500 transition-all shadow-lg shadow-rose-600/20"
@@ -637,6 +649,13 @@ function FormBuilderTab() {
                 <h4 className="font-black italic uppercase tracking-tight text-white">{field.label}</h4>
                 <div className="flex items-center gap-3 mt-1">
                   <span className="text-[10px] font-black uppercase text-slate-500 tracking-widest bg-slate-950 px-3 py-1 rounded-full border border-slate-800">{field.type}</span>
+                  <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${
+                    field.targetType === 'peserta' ? 'text-blue-500 bg-blue-500/10 border-blue-500/20' :
+                    field.targetType === 'pelatih' ? 'text-amber-500 bg-amber-500/10 border-amber-500/20' :
+                    'text-emerald-500 bg-emerald-500/10 border-emerald-500/20'
+                  }`}>
+                    {field.targetType === 'keduanya' ? 'KEDUANYA' : field.targetType?.toUpperCase() || 'PESERTA'}
+                  </span>
                   {field.required && <span className="text-[10px] font-black uppercase text-rose-500 bg-rose-500/10 px-3 py-1 rounded-full border border-rose-500/20 italic">WAJIB</span>}
                 </div>
               </div>
@@ -696,9 +715,23 @@ function FormBuilderTab() {
                         <option value="number">NUMBER</option>
                         <option value="select">DROPDOWN</option>
                         <option value="date">DATE</option>
+                        <option value="textarea">TEXTAREA</option>
                       </select>
                     </div>
                     <div className="space-y-2">
+                       <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">TARGET FORMULIR</label>
+                       <select 
+                        value={editingField.targetType || 'peserta'}
+                        onChange={e => setEditingField({...editingField, targetType: e.target.value as any})}
+                        className="w-full px-6 py-4 bg-slate-950 border border-slate-800 rounded-2xl focus:border-rose-500 outline-none font-bold uppercase text-white appearance-none"
+                      >
+                        <option value="peserta">PESERTA SAJA</option>
+                        <option value="pelatih">PELATIH SAJA</option>
+                        <option value="keduanya">KEDUANYA</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">WAJIB DIISI?</label>
                        <button 
                         type="button"
@@ -708,7 +741,6 @@ function FormBuilderTab() {
                          {editingField.required ? 'YA' : 'TIDAK'}
                        </button>
                     </div>
-                  </div>
 
                   {editingField.type === 'select' && (
                     <div className="space-y-2">

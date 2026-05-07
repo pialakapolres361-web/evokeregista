@@ -18,6 +18,7 @@ export default function PublicHome({ config }: PublicHomeProps) {
   const [foundRegistration, setFoundRegistration] = useState<Registration | null>(null);
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<'peserta' | 'pelatih' | null>(null);
   const [isEditing, setIsEditing] = useState(false);
 
   const handleSearch = async (e: React.FormEvent) => {
@@ -239,22 +240,85 @@ export default function PublicHome({ config }: PublicHomeProps) {
               className="fixed inset-0 z-50 bg-[#020617] overflow-y-auto"
             >
               <div className="max-w-3xl mx-auto px-6 py-16">
-                <div className="flex items-center justify-between mb-16">
-                  <div>
-                    <span className="text-[10px] font-black uppercase tracking-[0.4em] text-rose-500">ENTRY FORM</span>
-                    <h2 className="text-6xl font-black italic tracking-tighter text-white uppercase mt-2">REGISTRASI</h2>
+                {!selectedRole ? (
+                  <div className="min-h-[60vh] flex flex-col items-center justify-center">
+                    <div className="flex justify-between items-center w-full mb-16">
+                      <div className="text-left">
+                        <span className="text-[10px] font-black uppercase tracking-[0.4em] text-rose-500">SELECT TYPE</span>
+                        <h2 className="text-4xl md:text-6xl font-black italic tracking-tighter text-white uppercase mt-2">PILIH TIPE</h2>
+                      </div>
+                      <button 
+                        onClick={() => setShowForm(false)}
+                        className="p-4 bg-slate-900 border border-slate-800 text-white rounded-full hover:bg-slate-800 transition-all"
+                      >
+                        <X size={24} />
+                      </button>
+                    </div>
+
+                    <div className="grid md:grid-cols-2 gap-8 w-full">
+                      <div 
+                        onClick={() => setSelectedRole('peserta')}
+                        className="bg-slate-900 border-2 border-slate-800 p-10 rounded-[40px] cursor-pointer group hover:border-rose-500 transition-all text-center flex flex-col items-center gap-6"
+                      >
+                        <div className="w-20 h-20 rounded-3xl bg-rose-500/10 flex items-center justify-center text-rose-500 group-hover:bg-rose-500 group-hover:text-white transition-all">
+                          <UserPlus size={40} />
+                        </div>
+                        <div>
+                          <h3 className="text-3xl font-black italic tracking-tighter uppercase text-white mb-2">PESERTA</h3>
+                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-relaxed">PENDAFTARAN ATLET / PESERTA EVENT</p>
+                        </div>
+                      </div>
+
+                      <div 
+                        onClick={() => setSelectedRole('pelatih')}
+                        className="bg-slate-900 border-2 border-slate-800 p-10 rounded-[40px] cursor-pointer group hover:border-amber-500 transition-all text-center flex flex-col items-center gap-6"
+                      >
+                        <div className="w-20 h-20 rounded-3xl bg-amber-500/10 flex items-center justify-center text-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-all">
+                          <Trophy size={40} />
+                        </div>
+                        <div>
+                          <h3 className="text-3xl font-black italic tracking-tighter uppercase text-white mb-2">PELATIH</h3>
+                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-relaxed">PENDAFTARAN OFFICIAL / PELATIH KONTINGEN</p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <button 
-                    onClick={() => setShowForm(false)}
-                    className="p-4 bg-slate-900 border border-slate-800 text-white rounded-full hover:bg-slate-800 transition-all"
-                  >
-                    <X size={24} />
-                  </button>
-                </div>
-                <RegistrationForm config={config} onSuccess={(reg) => {
-                  setShowForm(false);
-                  setFoundRegistration(reg);
-                }} />
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between mb-16">
+                      <div>
+                        <span className="text-[10px] font-black uppercase tracking-[0.4em] text-rose-500">ENTRY FORM — {selectedRole.toUpperCase()}</span>
+                        <h2 className="text-6xl font-black italic tracking-tighter text-white uppercase mt-2">REGISTRASI</h2>
+                      </div>
+                      <div className="flex gap-4">
+                        <button 
+                          onClick={() => setSelectedRole(null)}
+                          className="px-6 py-4 bg-slate-900 border border-slate-800 text-slate-400 font-black italic tracking-tighter uppercase rounded-2xl hover:text-white transition-all text-xs"
+                        >
+                          KEMBALI
+                        </button>
+                        <button 
+                          onClick={() => {
+                            setShowForm(false);
+                            setSelectedRole(null);
+                          }}
+                          className="p-4 bg-slate-900 border border-slate-800 text-white rounded-full hover:bg-slate-800 transition-all"
+                        >
+                          <X size={24} />
+                        </button>
+                      </div>
+                    </div>
+                    <RegistrationForm 
+                      config={config} 
+                      type={selectedRole}
+                      onSuccess={(reg) => {
+                        setShowForm(false);
+                        setSelectedRole(null);
+                        setFoundRegistration(reg);
+                      }} 
+                    />
+                  </>
+                )}
               </div>
             </motion.div>
           )}

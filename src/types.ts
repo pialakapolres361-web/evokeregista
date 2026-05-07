@@ -1,6 +1,7 @@
 export interface Registration {
   id: string;
   fullName: string;
+  type: 'peserta' | 'pelatih';
   contingent?: string;
   category?: string;
   photoUrl?: string;
@@ -12,7 +13,8 @@ export interface Registration {
 export interface FormField {
   id: string;
   label: string;
-  type: 'text' | 'number' | 'select' | 'checkbox';
+  type: 'text' | 'number' | 'select' | 'checkbox' | 'date' | 'textarea';
+  targetType: 'peserta' | 'pelatih' | 'keduanya';
   options?: string[];
   required: boolean;
   order: number;
