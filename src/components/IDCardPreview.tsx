@@ -97,13 +97,13 @@ export default function IDCardPreview({ registration, containerRef }: IDCardPrev
       <div 
         ref={containerRef}
         id="id-card-capture"
-        className="relative overflow-hidden rounded-2xl bg-white border border-neutral-100 origin-top"
+        className="relative overflow-hidden rounded-2xl bg-white border border-neutral-100 origin-top-left"
         style={{ 
           backgroundColor: '#ffffff',
           width: `${designWidth}px`,
           height: `${designHeight}px`,
           transform: `scale(${scale})`,
-          transformOrigin: 'top center',
+          transformOrigin: 'top left',
           flexShrink: 0
         }}
       >

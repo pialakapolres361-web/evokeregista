@@ -38,9 +38,9 @@ export const generateAndDownloadPDF = async (elementId: string, registration: Re
             background-color: transparent !important;
             box-shadow: none !important;
             transform: none !important;
-            position: relative !important;
             margin: 0 !important;
             border: none !important;
+            border-radius: 0 !important;
           }
           /* Override common Tailwind classes with safe HEX values */
           .bg-white { background-color: #ffffff !important; }

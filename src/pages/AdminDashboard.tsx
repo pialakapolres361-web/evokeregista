@@ -1144,11 +1144,10 @@ function PdfBuilderTab({
                           isDragging ? 'z-50 shadow-2xl scale-105' : ''
                         } ${selectedElement === key ? 'border-rose-500 ring-4 ring-rose-500/20 opacity-100' : 'border-slate-400 opacity-50'}`}
                         style={{ 
-                          left: el.x, 
+                          left: el.x - (el.width || 0) / 2, 
                           top: el.y, 
                           width: el.width, 
                           height: el.height,
-                          transform: 'translateX(-50%)'
                         }}
                       >
                         <ImageIcon className="text-slate-500" />
@@ -1163,12 +1162,12 @@ function PdfBuilderTab({
                         isDragging ? 'z-50 scale-105 opacity-100' : ''
                       } ${selectedElement === key ? 'bg-rose-500/10 border-rose-500 ring-4 ring-rose-500/10' : 'border-dashed border-slate-300 hover:border-rose-500/50'}`}
                       style={{ 
-                        left: el.x, 
+                        left: el.x - 1000, 
+                        width: 2000,
                         top: el.y, 
                         fontSize: el.fontSize, 
                         color: el.color || '#000000',
-                        textAlign: 'center',
-                        transform: 'translateX(-50%)'
+                        textAlign: 'center'
                       }}
                     >
                       {key === 'name' ? 'SAMPLE NAME' : key === 'id' ? 'SILAT-XXXXX' : fields.find(f => f.id === key)?.label || key}
