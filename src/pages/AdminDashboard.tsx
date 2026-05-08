@@ -777,8 +777,14 @@ export default function AdminDashboard({ config }: AdminDashboardProps) {
                   <button 
                     onClick={async () => {
                       const config = selectedRegForPdf.type === 'pelatih' ? pdfConfigPelatih : pdfConfigPeserta;
-                      await generateAndDownloadPDF('id-card-capture', selectedRegForPdf, config?.paperSize);
-                      setSelectedRegForPdf(null);
+                      try {
+                        await generateAndDownloadPDF('id-card-capture', selectedRegForPdf, config?.paperSize);
+                      } catch (err) {
+                        console.error("Download single PDF error:", err);
+                        alert("Gagal mengunduh PDF. Silahkan coba lagi.");
+                      } finally {
+                        setSelectedRegForPdf(null);
+                      }
                     }}
                     className="flex-1 py-4 rounded-2xl bg-rose-600 text-white font-black italic tracking-tighter uppercase hover:bg-rose-500 transition-all shadow-lg shadow-rose-600/20 flex items-center justify-center gap-2"
                   >
