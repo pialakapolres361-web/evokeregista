@@ -15,7 +15,7 @@ import { Registration, FormField, WebConfig, PdfConfig } from '../types';
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 import IDCardPreview from '../components/IDCardPreview';
-import { generateAndDownloadPDF, downloadMultiPagePDF } from '../lib/pdf-utils';
+import { generateAndDownloadPDFFromConfig, downloadMultiPagePDF } from '../lib/pdf-utils';
 
 interface AdminDashboardProps {
   config: WebConfig;
@@ -779,7 +779,8 @@ export default function AdminDashboard({ config }: AdminDashboardProps) {
                           const config = selectedRegForPdf.type === 'pelatih' ? pdfConfigPelatih : pdfConfigPeserta;
                           const win = window.open('', '_blank');
                           try {
-                            await generateAndDownloadPDF('id-card-capture-admin', selectedRegForPdf, config?.paperSize, { openWindow: win });
+                            if (!config) throw new Error('Konfigurasi PDF belum tersedia.');
+                            await generateAndDownloadPDFFromConfig(selectedRegForPdf, config, { openWindow: win });
                           } catch (err) {
                             console.error("Download single PDF error:", err);
                             alert(`Gagal mengunduh PDF. ${err instanceof Error ? err.message : ''}`.trim());

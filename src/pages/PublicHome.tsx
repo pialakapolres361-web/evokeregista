@@ -6,7 +6,7 @@ import { Registration, WebConfig, FormField } from '../types';
 import RegistrationForm from '../components/RegistrationForm';
 import IDCardPreview from '../components/IDCardPreview';
 import { motion, AnimatePresence } from 'motion/react';
-import { generateAndDownloadPDF } from '../lib/pdf-utils';
+import { generateAndDownloadPDFFromConfig } from '../lib/pdf-utils';
 
 interface PublicHomeProps {
   config: WebConfig;
@@ -203,8 +203,8 @@ export default function PublicHome({ config }: PublicHomeProps) {
                           try {
                             const docId = foundRegistration.type === 'pelatih' ? 'pdf_config_pelatih' : 'pdf_config';
                             const configDoc = await getDoc(doc(db, 'settings', docId));
-                            const paperSize = configDoc.exists() ? configDoc.data().paperSize : 'id_card';
-                            await generateAndDownloadPDF('id-card-capture', foundRegistration, paperSize, { openWindow: win });
+                            if (!configDoc.exists()) throw new Error('Konfigurasi PDF belum dibuat oleh Admin.');
+                            await generateAndDownloadPDFFromConfig(foundRegistration, configDoc.data() as any, { openWindow: win });
                           } catch (err) {
                             console.error("Public download error:", err);
                             alert(`Gagal mengunduh PDF. ${err instanceof Error ? err.message : ''}`.trim());

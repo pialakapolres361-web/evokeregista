@@ -1,7 +1,92 @@
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
-import { Registration } from '../types';
+import { PdfConfig, Registration } from '../types';
 import { saveAs } from 'file-saver';
+
+const MM_TO_PT = 2.83465;
+const DESIGN_WIDTH = 500;
+const getDesignHeight = (paperSize?: 'id_card' | 'b2' | 'b3') => {
+  if (paperSize === 'b2') return 707;
+  if (paperSize === 'b3') return 708;
+  return 315;
+};
+
+function parseHexColor(input?: string) {
+  if (!input) return null;
+  const s = input.trim().toLowerCase();
+  if (!s.startsWith('#')) return null;
+  const hex = s.slice(1);
+  if (hex.length === 3) {
+    const r = parseInt(hex[0] + hex[0], 16);
+    const g = parseInt(hex[1] + hex[1], 16);
+    const b = parseInt(hex[2] + hex[2], 16);
+    return { r, g, b };
+  }
+  if (hex.length === 6) {
+    const r = parseInt(hex.slice(0, 2), 16);
+    const g = parseInt(hex.slice(2, 4), 16);
+    const b = parseInt(hex.slice(4, 6), 16);
+    return { r, g, b };
+  }
+  return null;
+}
+
+async function fetchAsDataUrl(url: string) {
+  const res = await fetch(url, { mode: 'cors', cache: 'no-cache' });
+  if (!res.ok) throw new Error(`Gagal memuat gambar (${res.status})`);
+  const blob = await res.blob();
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error('Gagal membaca gambar'));
+    reader.readAsDataURL(blob);
+  });
+  return { dataUrl, mime: blob.type || 'image/png' };
+}
+
+async function getImageSize(dataUrl: string) {
+  const img = new Image();
+  img.decoding = 'async';
+  img.src = dataUrl;
+  await (img.decode ? img.decode() : new Promise<void>((resolve, reject) => {
+    img.onload = () => resolve();
+    img.onerror = () => reject(new Error('Gagal decode gambar'));
+  }));
+  return { width: img.naturalWidth || img.width, height: img.naturalHeight || img.height };
+}
+
+function computeDrawRect(
+  imgW: number,
+  imgH: number,
+  pageW: number,
+  pageH: number,
+  size: string | undefined,
+  position: string | undefined
+) {
+  if (size === '100% 100%') {
+    return { x: 0, y: 0, w: pageW, h: pageH };
+  }
+
+  const mode = size === 'contain' ? 'contain' : 'cover';
+  const scale = mode === 'contain' ? Math.min(pageW / imgW, pageH / imgH) : Math.max(pageW / imgW, pageH / imgH);
+  const w = imgW * scale;
+  const h = imgH * scale;
+
+  let x = (pageW - w) / 2;
+  let y = (pageH - h) / 2;
+  const pos = (position || 'center').toLowerCase();
+  if (pos === 'top') y = 0;
+  else if (pos === 'bottom') y = pageH - h;
+  else if (pos === 'left') x = 0;
+  else if (pos === 'right') x = pageW - w;
+  return { x, y, w, h };
+}
+
+function getPdfFormatPt(paperSize?: 'id_card' | 'b2' | 'b3') {
+  if (paperSize === 'b2') return { w: 500 * MM_TO_PT, h: 707 * MM_TO_PT, orientation: 'portrait' as const };
+  if (paperSize === 'b3') return { w: 353 * MM_TO_PT, h: 500 * MM_TO_PT, orientation: 'portrait' as const };
+  return { w: 85.6 * MM_TO_PT, h: 53.98 * MM_TO_PT, orientation: 'landscape' as const };
+}
 
 /**
  * Generates a canvas for a single registration.
@@ -171,6 +256,87 @@ export const generateCanvas = async (elementId: string, scale: number = 3): Prom
   }
 };
 
+export const generatePDFBlobFromConfig = async (
+  registration: Registration,
+  pdfConfig: PdfConfig
+): Promise<Blob> => {
+  const paperSize = pdfConfig.paperSize || 'id_card';
+  const designHeight = getDesignHeight(paperSize);
+  const { w: pageW, h: pageH, orientation } = getPdfFormatPt(paperSize);
+  const xScale = pageW / DESIGN_WIDTH;
+  const yScale = pageH / designHeight;
+
+  const pdf = new jsPDF({ orientation, unit: 'pt', format: [pageW, pageH] as any });
+
+  // Background
+  if (pdfConfig.backgroundUrl) {
+    const { dataUrl } = await fetchAsDataUrl(pdfConfig.backgroundUrl);
+    const { width: imgW, height: imgH } = await getImageSize(dataUrl);
+    const rect = computeDrawRect(imgW, imgH, pageW, pageH, pdfConfig.backgroundSize, pdfConfig.backgroundPosition);
+    pdf.addImage(dataUrl, 'PNG', rect.x, rect.y, rect.w, rect.h);
+  }
+
+  // Photo
+  const photoEl = pdfConfig.elements?.photo;
+  if (photoEl?.visible !== false && registration.photoUrl && photoEl.width && photoEl.height) {
+    const { dataUrl } = await fetchAsDataUrl(registration.photoUrl);
+    const x = (photoEl.x - photoEl.width / 2) * xScale;
+    const y = photoEl.y * yScale;
+    const w = photoEl.width * xScale;
+    const h = photoEl.height * yScale;
+    pdf.addImage(dataUrl, 'PNG', x, y, w, h);
+  }
+
+  // Text elements
+  const entries = Object.entries(pdfConfig.elements || {});
+  for (const [key, el] of entries) {
+    if (key === 'photo') continue;
+    if (el.visible === false) continue;
+
+    let content = '';
+    if (key === 'name') content = registration.fullName || '';
+    else if (key === 'id') content = registration.id || '';
+    else content = String(registration.customFields?.[key] ?? '');
+    if (!content) continue;
+
+    const x = el.x * xScale;
+    const y = el.y * yScale;
+    const fontSize = (el.fontSize || 12) * Math.min(xScale, yScale);
+    pdf.setFontSize(fontSize);
+
+    const c = parseHexColor(el.color);
+    if (c) pdf.setTextColor(c.r, c.g, c.b);
+    else pdf.setTextColor(15, 23, 42);
+
+    pdf.text(String(content).toUpperCase(), x, y, { align: 'center', baseline: 'top' } as any);
+  }
+
+  return pdf.output('blob') as Blob;
+};
+
+export const generateAndDownloadPDFFromConfig = async (
+  registration: Registration,
+  pdfConfig: PdfConfig,
+  options?: { openWindow?: Window | null }
+) => {
+  const blob = await generatePDFBlobFromConfig(registration, pdfConfig);
+  const fileName = `KARTU_SILAT_${registration.id}_${registration.fullName.replace(/\s+/g, '_')}.pdf`;
+  const win = options?.openWindow;
+  if (win) {
+    const url = URL.createObjectURL(blob);
+    try {
+      win.location.href = url;
+    } catch (e) {
+      saveAs(blob, fileName);
+    } finally {
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    }
+  } else {
+    saveAs(blob, fileName);
+  }
+};
+
+// Backward compatible API: still supports html2canvas capture, but will not be used by UI anymore.
 export const generateAndDownloadPDF = async (
   elementId: string,
   registration: Registration,
@@ -178,31 +344,16 @@ export const generateAndDownloadPDF = async (
   options?: { openWindow?: Window | null }
 ) => {
   const canvas = await generateCanvas(elementId, 2);
-  if (!canvas) {
-    throw new Error(`CAPTURE_FAILED:${elementId}`);
-  }
+  if (!canvas) throw new Error(`CAPTURE_FAILED:${elementId}`);
 
   const imgData = canvas.toDataURL('image/png', 1.0);
-  
-  let format: any = [canvas.width, canvas.height];
-  if (paperSize === 'b2') format = 'b2';
-  else if (paperSize === 'b3') format = 'b3';
-  else if (paperSize === 'id_card') format = [85.6 * 2.83465, 53.98 * 2.83465];
+  const paper = paperSize || 'id_card';
+  const { w: pageW, h: pageH, orientation } = getPdfFormatPt(paper);
+  const pdf = new jsPDF({ orientation, unit: 'pt', format: [pageW, pageH] as any });
+  pdf.addImage(imgData, 'PNG', 0, 0, pageW, pageH);
 
-  let finalFormat = format;
-  if (paperSize === 'b2') finalFormat = [500 * 2.83465, 707 * 2.83465];
-  else if (paperSize === 'b3') finalFormat = [353 * 2.83465, 500 * 2.83465];
-
-  const pdf = new jsPDF({
-    orientation: paperSize?.startsWith('b') ? 'portrait' : (canvas.width > canvas.height ? 'landscape' : 'portrait'),
-    unit: 'pt',
-    format: finalFormat
-  });
-
-  pdf.addImage(imgData, 'PNG', 0, 0, pdf.internal.pageSize.getWidth(), pdf.internal.pageSize.getHeight());
   const fileName = `KARTU_SILAT_${registration.id}_${registration.fullName.replace(/\s+/g, '_')}.pdf`;
   const blob = pdf.output('blob') as Blob;
-
   const win = options?.openWindow;
   if (win) {
     const url = URL.createObjectURL(blob);
