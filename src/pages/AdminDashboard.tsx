@@ -4,7 +4,7 @@ import {
   Download, Plus, Trash2, Edit2, Save, 
   ChevronRight, Search, Filter, MoreVertical, 
   Check, X, AlertTriangle, Image as ImageIcon,
-  Loader2, Upload, Menu
+  Loader2, Upload, Menu, UserPlus, Trophy
 } from 'lucide-react';
 import { auth, db, logout } from '../lib/firebase';
 import { 
@@ -91,12 +91,34 @@ export default function AdminDashboard({ config }: AdminDashboardProps) {
     return () => { unsubRegs(); unsubConfigPeserta(); unsubConfigPelatih(); unsubFields(); };
   }, []);
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#020617] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="animate-spin text-rose-500" size={48} />
+          <p className="text-slate-500 font-black italic tracking-tighter uppercase text-xs animate-pulse">Memuat Data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const formatDate = (date: any) => {
+    if (!date) return '-';
+    try {
+      // Handle Firestore Timestamp
+      const d = typeof date.toDate === 'function' ? date.toDate() : new Date(date);
+      return format(d, 'yyyy-MM-dd HH:mm');
+    } catch (e) {
+      return String(date);
+    }
+  };
+
   const downloadRecap = () => {
     const headers = ['ID', 'Nama Lengkap', 'Tanggal Daftar'];
     const rows = registrations.map(reg => [
       reg.id,
       reg.fullName,
-      new Date(reg.createdAt).toLocaleDateString()
+      formatDate(reg.createdAt)
     ]);
     
     const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
@@ -197,7 +219,7 @@ export default function AdminDashboard({ config }: AdminDashboardProps) {
       .map(r => {
         const row: any = {
           'KODE ID': r.id,
-          'TANGGAL DAFTAR': format(r.createdAt, 'yyyy-MM-dd HH:mm'),
+          'TANGGAL DAFTAR': formatDate(r.createdAt),
           'NAMA LENGKAP': r.fullName
         };
 
@@ -236,7 +258,7 @@ export default function AdminDashboard({ config }: AdminDashboardProps) {
       <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#0f172a] border-r border-slate-800 flex flex-col transition-transform duration-300 md:relative md:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-6 border-b border-slate-800 flex justify-between items-center">
           <div className="flex flex-col">
-            <h1 className="text-2xl font-black tracking-tighter text-rose-500 italic">SILAT.REG</h1>
+            <h1 className="text-2xl font-black tracking-tighter text-rose-500 italic">EVOKA REGIST</h1>
             <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-bold">Admin Panel</p>
           </div>
           <button className="md:hidden text-slate-400 hover:text-white" onClick={() => setIsMobileMenuOpen(false)}>
@@ -374,9 +396,14 @@ export default function AdminDashboard({ config }: AdminDashboardProps) {
                       // Calculate distribution
                       const counts: Record<string, number> = {};
                       registrations.forEach(reg => {
-                        const val = reg.customFields?.[field.id] || 'TIDAK DIISI';
-                        const normalizedVal = typeof val === 'string' ? val.toUpperCase() : val;
-                        counts[normalizedVal] = (counts[normalizedVal] || 0) + 1;
+                        const rawVal = reg.customFields?.[field.id];
+                        let val = 'TIDAK DIISI';
+                        
+                        if (rawVal !== undefined && rawVal !== null && rawVal !== '') {
+                          val = String(rawVal).toUpperCase();
+                        }
+                        
+                        counts[val] = (counts[val] || 0) + 1;
                       });
 
                       const sortedValues = Object.entries(counts).sort((a, b) => b[1] - a[1]);
@@ -397,7 +424,7 @@ export default function AdminDashboard({ config }: AdminDashboardProps) {
                                   <div className="h-1 flex-1 bg-slate-800 rounded-full overflow-hidden">
                                     <div 
                                       className="h-full bg-rose-600/50 group-hover:bg-rose-600 transition-all" 
-                                      style={{ width: `${(count / registrations.length) * 100}%` }}
+                                      style={{ width: `${registrations.length > 0 ? (count / registrations.length) * 100 : 0}%` }}
                                     />
                                   </div>
                                   <span className="text-xs font-black italic text-white min-w-[30px] text-right">{count}</span>
