@@ -763,34 +763,34 @@ export default function AdminDashboard({ config }: AdminDashboardProps) {
                 <span className="text-[10px] font-black uppercase tracking-[0.3em] text-rose-500">PDF GENERATOR</span>
                 <h3 className="text-2xl md:text-4xl font-black italic tracking-tighter uppercase text-white mt-1 md:mt-2 mb-6 md:mb-8">ID CARD PREVIEW</h3>
                 
-                <div className="mb-8 md:mb-10 scale-100 md:scale-110 origin-center flex justify-center">
-                   <IDCardPreview registration={selectedRegForPdf} />
-                </div>
+                    <div className="mb-8 md:mb-10 scale-100 md:scale-110 origin-center flex justify-center">
+                       <IDCardPreview registration={selectedRegForPdf} containerId="id-card-capture-admin" />
+                    </div>
 
-                <div className="flex gap-4">
-                  <button 
-                    onClick={() => setSelectedRegForPdf(null)}
-                    className="flex-1 py-4 rounded-2xl bg-slate-800 text-white font-black italic tracking-tighter uppercase hover:bg-slate-700 transition-all font-bold"
-                  >
-                    BATAL
-                  </button>
-                  <button 
-                    onClick={async () => {
-                      const config = selectedRegForPdf.type === 'pelatih' ? pdfConfigPelatih : pdfConfigPeserta;
-                      try {
-                        await generateAndDownloadPDF('id-card-capture', selectedRegForPdf, config?.paperSize);
-                      } catch (err) {
-                        console.error("Download single PDF error:", err);
-                        alert("Gagal mengunduh PDF. Silahkan coba lagi.");
-                      } finally {
-                        setSelectedRegForPdf(null);
-                      }
-                    }}
-                    className="flex-1 py-4 rounded-2xl bg-rose-600 text-white font-black italic tracking-tighter uppercase hover:bg-rose-500 transition-all shadow-lg shadow-rose-600/20 flex items-center justify-center gap-2"
-                  >
-                    <Download size={20} /> UNDUH PDF
-                  </button>
-                </div>
+                    <div className="flex gap-4">
+                      <button 
+                        onClick={() => setSelectedRegForPdf(null)}
+                        className="flex-1 py-4 rounded-2xl bg-slate-800 text-white font-black italic tracking-tighter uppercase hover:bg-slate-700 transition-all font-bold"
+                      >
+                        BATAL
+                      </button>
+                      <button 
+                        onClick={async () => {
+                          const config = selectedRegForPdf.type === 'pelatih' ? pdfConfigPelatih : pdfConfigPeserta;
+                          try {
+                            await generateAndDownloadPDF('id-card-capture-admin', selectedRegForPdf, config?.paperSize);
+                          } catch (err) {
+                            console.error("Download single PDF error:", err);
+                            alert("Gagal mengunduh PDF. Silahkan coba lagi.");
+                          } finally {
+                            setSelectedRegForPdf(null);
+                          }
+                        }}
+                        className="flex-1 py-4 rounded-2xl bg-rose-600 text-white font-black italic tracking-tighter uppercase hover:bg-rose-500 transition-all shadow-lg shadow-rose-600/20 flex items-center justify-center gap-2"
+                      >
+                        <Download size={20} /> UNDUH PDF
+                      </button>
+                    </div>
               </div>
            </div>
         </div>

@@ -117,10 +117,10 @@ export const downloadMultiPagePDF = async (
     if (renderElement) await renderElement(reg);
 
     // Use lower scale (2) for bulk to save memory
-    const canvas = await generateCanvas('id-card-bulk-capture', 2);
+    const canvas = await generateCanvas('id-card-bulk-capture', 1.5); // Lower scale for better stability
     
     if (canvas) {
-      const imgData = canvas.toDataURL('image/jpeg', 0.9); // Use JPEG for bulk to save size
+      const imgData = canvas.toDataURL('image/jpeg', 0.85); // Compress more for bulk
       
       let format: any = [canvas.width, canvas.height];
       if (paperSize === 'b2') format = 'b2';
