@@ -15,7 +15,7 @@ import { Registration, FormField, WebConfig, PdfConfig } from '../types';
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 import IDCardPreview from '../components/IDCardPreview';
-import { generateAndDownloadPDF } from '../lib/pdf-utils';
+import { generateAndDownloadPDF, downloadBulkZip } from '../lib/pdf-utils';
 
 interface AdminDashboardProps {
   config: WebConfig;
@@ -41,6 +41,8 @@ export default function AdminDashboard({ config }: AdminDashboardProps) {
   const [filterRole, setFilterRole] = useState<'all' | 'peserta' | 'pelatih'>('all');
   const [editingRegistration, setEditingRegistration] = useState<Registration | null>(null);
   const [selectedRegForPdf, setSelectedRegForPdf] = useState<Registration | null>(null);
+  const [bulkDownloadProgress, setBulkDownloadProgress] = useState<{ current: number, total: number } | null>(null);
+  const [bulkReg, setBulkReg] = useState<Registration | null>(null);
   const [pdfConfigPeserta, setPdfConfigPeserta] = useState<PdfConfig | null>(null);
   const [pdfConfigPelatih, setPdfConfigPelatih] = useState<PdfConfig | null>(null);
   const [fields, setFields] = useState<FormField[]>([]);
@@ -195,13 +197,27 @@ export default function AdminDashboard({ config }: AdminDashboardProps) {
     
     setConfirmModal({
       isOpen: true,
-      title: `UNDUH SEMUA PDF ${role.toUpperCase()}`,
-      message: `Sistem akan mencoba mengunduh ${targetRegs.length} file PDF. Browser mungkin akan meminta izin untuk mengunduh banyak file. Lanjutkan?`,
+      title: `UNDUH ZIP MASSAL ${role.toUpperCase()}`,
+      message: `Sistem akan mengompres ${targetRegs.length} file PDF ke dalam format ZIP. Proses ini mungkin memakan waktu beberapa saat tergantung jumlah data. Lanjutkan?`,
       onConfirm: async () => {
-        for (const reg of targetRegs) {
-          await generateAndDownloadPDF('id-card-capture', reg, config?.paperSize);
-          // Beri jeda sedikit agar browser tidak menganggap spam
-          await new Promise(resolve => setTimeout(resolve, 500));
+        try {
+          await downloadBulkZip(
+            targetRegs, 
+            config?.paperSize, 
+            role,
+            (current, total) => setBulkDownloadProgress({ current, total }),
+            async (reg) => {
+              setBulkReg(reg);
+              // Tunggu render dan config loading
+              await new Promise(resolve => setTimeout(resolve, 800));
+            }
+          );
+        } catch (err) {
+          console.error("Bulk download error:", err);
+          alert('Gagal mengunduh file massal.');
+        } finally {
+          setBulkDownloadProgress(null);
+          setBulkReg(null);
         }
       }
     });
@@ -707,6 +723,31 @@ export default function AdminDashboard({ config }: AdminDashboardProps) {
           </div>
         </div>
       )}
+
+      {/* Bulk Download Progress Modal */}
+      {bulkDownloadProgress && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 bg-slate-950/95 backdrop-blur-2xl">
+          <div className="bg-slate-900 border border-slate-800 rounded-[40px] w-full max-w-md overflow-hidden shadow-2xl p-10 text-center">
+            <Loader2 className="w-12 h-12 animate-spin text-rose-500 mx-auto mb-6" />
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-rose-500">MENGOMPRES DATA</span>
+            <h3 className="text-3xl font-black italic tracking-tighter uppercase text-white mt-2 mb-2">PROSES ZIP</h3>
+            <p className="text-slate-400 font-bold uppercase tracking-widest text-xs mb-8">
+              MOHON TUNGGU, SEDANG MEMPROSES {bulkDownloadProgress.current} DARI {bulkDownloadProgress.total} FILE
+            </p>
+            <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-rose-600 transition-all duration-300" 
+                style={{ width: `${(bulkDownloadProgress.current / bulkDownloadProgress.total) * 100}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Hidden PDF Worker Element */}
+      <div className="fixed -left-[2000px] -top-[2000px] opacity-0 pointer-events-none w-[500px]">
+        {bulkReg && <IDCardPreview registration={bulkReg} />}
+      </div>
 
       {/* PDF Download Worker */}
       {selectedRegForPdf && (

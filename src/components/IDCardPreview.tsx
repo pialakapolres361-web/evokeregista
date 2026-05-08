@@ -44,7 +44,7 @@ export default function IDCardPreview({ registration, containerRef }: IDCardPrev
       unsubPdf();
       unsubFields();
     };
-  }, []);
+  }, [registration.type]);
 
   useEffect(() => {
     if (!wrapperRef.current || !config) return;
