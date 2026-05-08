@@ -15,7 +15,7 @@ import { Registration, FormField, WebConfig, PdfConfig } from '../types';
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 import IDCardPreview from '../components/IDCardPreview';
-import { generateAndDownloadPDF, downloadBulkZip } from '../lib/pdf-utils';
+import { generateAndDownloadPDF, downloadMultiPagePDF } from '../lib/pdf-utils';
 
 interface AdminDashboardProps {
   config: WebConfig;
@@ -197,11 +197,11 @@ export default function AdminDashboard({ config }: AdminDashboardProps) {
     
     setConfirmModal({
       isOpen: true,
-      title: `UNDUH ZIP MASSAL ${role.toUpperCase()}`,
-      message: `Sistem akan mengompres ${targetRegs.length} file PDF ke dalam format ZIP. Proses ini mungkin memakan waktu beberapa saat tergantung jumlah data. Lanjutkan?`,
+      title: `UNDUH PDF MASSAL ${role.toUpperCase()}`,
+      message: `Sistem akan menggabungkan ${targetRegs.length} ID Card ke dalam SATU file PDF. Ini adalah cara tercepat dan termudah untuk mencetak banyak kartu sekaligus. Lanjutkan?`,
       onConfirm: async () => {
         try {
-          await downloadBulkZip(
+          await downloadMultiPagePDF(
             targetRegs, 
             config?.paperSize, 
             role,
