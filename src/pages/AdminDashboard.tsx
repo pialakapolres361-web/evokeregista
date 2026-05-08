@@ -207,9 +207,9 @@ export default function AdminDashboard({ config }: AdminDashboardProps) {
             role,
             (current, total) => setBulkDownloadProgress({ current, total }),
             async (reg) => {
-               setBulkReg(reg);
-               // Tunggu render dan config loading lebih lama agar stabil
-               await new Promise(resolve => setTimeout(resolve, 1000));
+                setBulkReg(reg);
+                // Tunggu render dan sinkronisasi state React
+                await new Promise(resolve => setTimeout(resolve, 300));
              }
           );
         } catch (err) {
@@ -746,7 +746,13 @@ export default function AdminDashboard({ config }: AdminDashboardProps) {
 
       {/* Hidden PDF Worker Element */}
       <div className="fixed -left-[2000px] -top-[2000px] opacity-100 pointer-events-none w-[500px] bg-white">
-        {bulkReg && <IDCardPreview registration={bulkReg} containerId="id-card-bulk-capture" />}
+        {bulkReg && (
+          <IDCardPreview 
+            registration={bulkReg} 
+            containerId="id-card-bulk-capture" 
+            forcedConfig={bulkReg.type === 'pelatih' ? pdfConfigPelatih : pdfConfigPeserta}
+          />
+        )}
       </div>
 
       {/* PDF Download Worker */}

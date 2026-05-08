@@ -7,16 +7,23 @@ interface IDCardPreviewProps {
   registration: Registration;
   containerRef?: React.RefObject<HTMLDivElement>;
   containerId?: string;
+  forcedConfig?: PdfConfig | null;
 }
 
-export default function IDCardPreview({ registration, containerRef, containerId = "id-card-capture" }: IDCardPreviewProps) {
-  const [config, setConfig] = useState<PdfConfig | null>(null);
+export default function IDCardPreview({ registration, containerRef, containerId = "id-card-capture", forcedConfig }: IDCardPreviewProps) {
+  const [config, setConfig] = useState<PdfConfig | null>(forcedConfig || null);
   const [fields, setFields] = useState<FormField[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!forcedConfig);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
 
   useEffect(() => {
+    if (forcedConfig) {
+      setConfig(forcedConfig);
+      setLoading(false);
+      return;
+    }
+
     // Fetch the correct PDF config based on registration type
     const docId = registration.type === 'pelatih' ? 'pdf_config_pelatih' : 'pdf_config';
     const unsubPdf = onSnapshot(doc(db, 'settings', docId), (snapshot) => {

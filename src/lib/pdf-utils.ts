@@ -30,7 +30,18 @@ export const generatePDFBlob = async (elementId: string, registration: Registrat
   element.style.transform = 'none';
   element.style.opacity = '1';
   
-  // Wait for layout stability and images to load
+  // Robust image loading check
+  const imgs = Array.from(element.querySelectorAll('img'));
+  const loadPromises = imgs.map(img => {
+    if (img.complete) return Promise.resolve();
+    return new Promise((resolve) => {
+      img.onload = resolve;
+      img.onerror = resolve; // Continue anyway on error
+    });
+  });
+  
+  // Wait for images and layout stability
+  await Promise.all(loadPromises);
   await new Promise(resolve => setTimeout(resolve, 500));
 
   try {
@@ -141,7 +152,7 @@ export const downloadBulkZip = async (
   }
 
   if (successCount === 0) {
-    throw new Error("Gagal membuat file PDF. Silahkan periksa koneksi internet atau data pendaftar.");
+    throw new Error(`Gagal membuat file PDF. Berhasil memproses ${successCount} dari ${total} data. Silahkan periksa koneksi internet atau coba dengan jumlah data yang lebih sedikit.`);
   }
 
   const content = await zip.generateAsync({ 
