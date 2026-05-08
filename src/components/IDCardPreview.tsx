@@ -6,9 +6,10 @@ import { doc, onSnapshot, collection, query, orderBy } from 'firebase/firestore'
 interface IDCardPreviewProps {
   registration: Registration;
   containerRef?: React.RefObject<HTMLDivElement>;
+  containerId?: string;
 }
 
-export default function IDCardPreview({ registration, containerRef }: IDCardPreviewProps) {
+export default function IDCardPreview({ registration, containerRef, containerId = "id-card-capture" }: IDCardPreviewProps) {
   const [config, setConfig] = useState<PdfConfig | null>(null);
   const [fields, setFields] = useState<FormField[]>([]);
   const [loading, setLoading] = useState(true);
@@ -96,7 +97,7 @@ export default function IDCardPreview({ registration, containerRef }: IDCardPrev
     >
       <div 
         ref={containerRef}
-        id="id-card-capture"
+        id={containerId}
         className="relative overflow-hidden rounded-2xl bg-white border border-neutral-100 origin-top-left"
         style={{ 
           backgroundColor: '#ffffff',

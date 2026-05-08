@@ -5,19 +5,23 @@ import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 
 /**
- * Generates a PDF for a single registration and returns it as a Blob or saves it.
+ * Generates a PDF for a single registration and returns it as a Blob.
  */
-export const generatePDFBlob = async (elementId: string, registration: Registration, paperSize?: 'id_card' | 'b2' | 'b3'): Promise<Blob | null> => {
+export const generatePDFData = async (elementId: string, registration: Registration, paperSize?: 'id_card' | 'b2' | 'b3'): Promise<ArrayBuffer | null> => {
   const element = document.getElementById(elementId);
   if (!element) {
     console.error('Element not found for capture:', elementId);
     return null;
   }
 
+  // Ensure element is visible and stable
   const originalTransform = element.style.transform;
+  const originalOpacity = element.style.opacity;
   element.style.transform = 'none';
+  element.style.opacity = '1';
   
-  await new Promise(resolve => setTimeout(resolve, 150));
+  // Wait for layout stability
+  await new Promise(resolve => setTimeout(resolve, 200));
 
   try {
     const canvas = await html2canvas(element, {
@@ -25,35 +29,22 @@ export const generatePDFBlob = async (elementId: string, registration: Registrat
       useCORS: true,
       allowTaint: false,
       logging: false,
-      backgroundColor: null,
+      backgroundColor: '#ffffff',
       width: element.offsetWidth,
       height: element.offsetHeight,
       onclone: (clonedDoc) => {
-        const style = clonedDoc.createElement('style');
-        style.innerHTML = `
-          #id-card-capture { 
-            background-color: transparent !important;
-            box-shadow: none !important;
-            transform: none !important;
-            margin: 0 !important;
-            border: none !important;
-            border-radius: 0 !important;
-          }
-          .bg-white { background-color: #ffffff !important; }
-          .text-white { color: #ffffff !important; }
-          .bg-rose-500 { background-color: #f43f5e !important; }
-          .bg-rose-600 { background-color: #e11d48 !important; }
-          .bg-slate-900 { background-color: #0f172a !important; }
-          .bg-slate-950 { background-color: #020617 !important; }
-          .border-neutral-100 { border-color: #f5f5f5 !important; }
-          .border-slate-800 { border-color: #1e293b !important; }
-          * { box-shadow: none !important; text-shadow: none !important; }
-        `;
-        clonedDoc.head.appendChild(style);
+        const clonedEl = clonedDoc.getElementById(elementId);
+        if (clonedEl) {
+          clonedEl.style.transform = 'none';
+          clonedEl.style.opacity = '1';
+          clonedEl.style.boxShadow = 'none';
+          clonedEl.style.border = 'none';
+          clonedEl.style.borderRadius = '0';
+        }
       }
     });
 
-    const imgData = canvas.toDataURL('image/png');
+    const imgData = canvas.toDataURL('image/png', 1.0);
     
     let format: any = [canvas.width, canvas.height];
     if (paperSize === 'b2') format = 'b2';
@@ -77,18 +68,20 @@ export const generatePDFBlob = async (elementId: string, registration: Registrat
     const pdfHeight = pdf.internal.pageSize.getHeight();
 
     pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-    return pdf.output('blob');
+    return pdf.output('arraybuffer');
   } catch (error) {
-    console.error('Error generating PDF Blob:', error);
+    console.error('Error generating PDF Data:', error);
     return null;
   } finally {
     element.style.transform = originalTransform;
+    element.style.opacity = originalOpacity;
   }
 };
 
 export const generateAndDownloadPDF = async (elementId: string, registration: Registration, paperSize?: 'id_card' | 'b2' | 'b3') => {
-  const blob = await generatePDFBlob(elementId, registration, paperSize);
-  if (blob) {
+  const data = await generatePDFData(elementId, registration, paperSize);
+  if (data) {
+    const blob = new Blob([data], { type: 'application/pdf' });
     const fileName = `KARTU_SILAT_${registration.id}_${registration.fullName.replace(/\s+/g, '_')}.pdf`;
     saveAs(blob, fileName);
   }
@@ -96,7 +89,6 @@ export const generateAndDownloadPDF = async (elementId: string, registration: Re
 
 /**
  * Bulk generates PDFs and downloads them as a ZIP file.
- * This requires a way to render each registration one by one.
  */
 export const downloadBulkZip = async (
   registrations: Registration[], 
@@ -105,36 +97,43 @@ export const downloadBulkZip = async (
   onProgress?: (current: number, total: number) => void,
   renderElement?: (reg: Registration) => Promise<void>
 ) => {
+  if (registrations.length === 0) return;
+  
   const zip = new JSZip();
+  const folderName = role === 'peserta' ? 'PDF_PESERTA' : 'PDF_PELATIH';
+  const folder = zip.folder(folderName);
+  
   const total = registrations.length;
+  let successCount = 0;
 
   for (let i = 0; i < registrations.length; i++) {
     const reg = registrations[i];
     if (onProgress) onProgress(i + 1, total);
 
-    // If a render function is provided, use it to update the DOM
     if (renderElement) {
       await renderElement(reg);
     }
 
-    const blob = await generatePDFBlob('id-card-capture', reg, paperSize);
-    if (blob) {
-      // Create a folder structure inside the ZIP
-      const folderName = role === 'peserta' ? 'PDF_PESERTA' : 'PDF_PELATIH';
+    // Use a specific ID for bulk capture to avoid conflicts
+    const data = await generatePDFData('id-card-bulk-capture', reg, paperSize);
+    if (data && folder) {
       const fileName = `KARTU_${reg.id}_${reg.fullName.replace(/\s+/g, '_')}.pdf`;
-      zip.file(`${folderName}/${fileName}`, blob);
-      console.log(`Added to ZIP: ${fileName}`);
+      folder.file(fileName, data);
+      successCount++;
     }
   }
 
-  console.log('Generating ZIP archive...');
+  if (successCount === 0) {
+    throw new Error("Gagal membuat file PDF. Silahkan coba lagi.");
+  }
+
   const content = await zip.generateAsync({ 
     type: 'blob',
+    mimeType: 'application/zip',
     compression: "DEFLATE",
     compressionOptions: { level: 6 }
   });
   
   const zipName = `KARTU_${role.toUpperCase()}_EVOKA_${new Date().toISOString().split('T')[0]}.zip`;
   saveAs(content, zipName);
-  console.log(`ZIP downloaded: ${zipName}`);
 };

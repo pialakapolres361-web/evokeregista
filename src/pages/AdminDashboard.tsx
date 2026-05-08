@@ -745,8 +745,8 @@ export default function AdminDashboard({ config }: AdminDashboardProps) {
       )}
 
       {/* Hidden PDF Worker Element */}
-      <div className="fixed -left-[2000px] -top-[2000px] opacity-0 pointer-events-none w-[500px]">
-        {bulkReg && <IDCardPreview registration={bulkReg} />}
+      <div className="fixed -left-[2000px] -top-[2000px] opacity-100 pointer-events-none w-[500px] bg-white">
+        {bulkReg && <IDCardPreview registration={bulkReg} containerId="id-card-bulk-capture" />}
       </div>
 
       {/* PDF Download Worker */}
