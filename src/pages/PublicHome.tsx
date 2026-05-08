@@ -199,14 +199,16 @@ export default function PublicHome({ config }: PublicHomeProps) {
                        </button>
                        <button 
                         onClick={async () => {
+                          const win = window.open('', '_blank');
                           try {
                             const docId = foundRegistration.type === 'pelatih' ? 'pdf_config_pelatih' : 'pdf_config';
                             const configDoc = await getDoc(doc(db, 'settings', docId));
                             const paperSize = configDoc.exists() ? configDoc.data().paperSize : 'id_card';
-                            await generateAndDownloadPDF('id-card-capture', foundRegistration, paperSize);
+                            await generateAndDownloadPDF('id-card-capture', foundRegistration, paperSize, { openWindow: win });
                           } catch (err) {
                             console.error("Public download error:", err);
                             alert("Gagal mengunduh PDF. Silahkan coba lagi.");
+                            if (win && !win.closed) win.close();
                           }
                         }}
                         className="w-full py-4 sm:py-5 rounded-2xl bg-rose-600 text-white font-black italic tracking-tighter uppercase hover:bg-rose-500 transition-all shadow-lg shadow-rose-600/20 text-sm flex items-center justify-center gap-3"

@@ -777,11 +777,13 @@ export default function AdminDashboard({ config }: AdminDashboardProps) {
                       <button 
                         onClick={async () => {
                           const config = selectedRegForPdf.type === 'pelatih' ? pdfConfigPelatih : pdfConfigPeserta;
+                          const win = window.open('', '_blank');
                           try {
-                            await generateAndDownloadPDF('id-card-capture-admin', selectedRegForPdf, config?.paperSize);
+                            await generateAndDownloadPDF('id-card-capture-admin', selectedRegForPdf, config?.paperSize, { openWindow: win });
                           } catch (err) {
                             console.error("Download single PDF error:", err);
                             alert("Gagal mengunduh PDF. Silahkan coba lagi.");
+                            if (win && !win.closed) win.close();
                           } finally {
                             setSelectedRegForPdf(null);
                           }

@@ -1,7 +1,6 @@
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { Registration } from '../types';
-import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 
 /**
@@ -69,9 +68,16 @@ export const generateCanvas = async (elementId: string, scale: number = 3): Prom
   }
 };
 
-export const generateAndDownloadPDF = async (elementId: string, registration: Registration, paperSize?: 'id_card' | 'b2' | 'b3') => {
+export const generateAndDownloadPDF = async (
+  elementId: string,
+  registration: Registration,
+  paperSize?: 'id_card' | 'b2' | 'b3',
+  options?: { openWindow?: Window | null }
+) => {
   const canvas = await generateCanvas(elementId, 3);
-  if (!canvas) return;
+  if (!canvas) {
+    throw new Error(`CAPTURE_NOT_FOUND:${elementId}`);
+  }
 
   const imgData = canvas.toDataURL('image/png', 1.0);
   
@@ -91,7 +97,22 @@ export const generateAndDownloadPDF = async (elementId: string, registration: Re
   });
 
   pdf.addImage(imgData, 'PNG', 0, 0, pdf.internal.pageSize.getWidth(), pdf.internal.pageSize.getHeight());
-  pdf.save(`KARTU_SILAT_${registration.id}_${registration.fullName.replace(/\s+/g, '_')}.pdf`);
+  const fileName = `KARTU_SILAT_${registration.id}_${registration.fullName.replace(/\s+/g, '_')}.pdf`;
+  const blob = pdf.output('blob') as Blob;
+
+  const win = options?.openWindow;
+  if (win) {
+    const url = URL.createObjectURL(blob);
+    try {
+      win.location.href = url;
+    } catch (e) {
+      saveAs(blob, fileName);
+    } finally {
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    }
+  } else {
+    saveAs(blob, fileName);
+  }
 };
 
 /**
