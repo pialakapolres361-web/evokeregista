@@ -119,11 +119,22 @@ export const downloadBulkZip = async (
 
     const blob = await generatePDFBlob('id-card-capture', reg, paperSize);
     if (blob) {
-      const fileName = `${reg.id}_${reg.fullName.replace(/\s+/g, '_')}.pdf`;
-      zip.file(fileName, blob);
+      // Create a folder structure inside the ZIP
+      const folderName = role === 'peserta' ? 'PDF_PESERTA' : 'PDF_PELATIH';
+      const fileName = `KARTU_${reg.id}_${reg.fullName.replace(/\s+/g, '_')}.pdf`;
+      zip.file(`${folderName}/${fileName}`, blob);
+      console.log(`Added to ZIP: ${fileName}`);
     }
   }
 
-  const content = await zip.generateAsync({ type: 'blob' });
-  saveAs(content, `KARTU_${role.toUpperCase()}_EVOKA_${new Date().toISOString().split('T')[0]}.zip`);
+  console.log('Generating ZIP archive...');
+  const content = await zip.generateAsync({ 
+    type: 'blob',
+    compression: "DEFLATE",
+    compressionOptions: { level: 6 }
+  });
+  
+  const zipName = `KARTU_${role.toUpperCase()}_EVOKA_${new Date().toISOString().split('T')[0]}.zip`;
+  saveAs(content, zipName);
+  console.log(`ZIP downloaded: ${zipName}`);
 };

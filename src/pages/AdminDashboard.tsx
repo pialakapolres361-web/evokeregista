@@ -207,10 +207,10 @@ export default function AdminDashboard({ config }: AdminDashboardProps) {
             role,
             (current, total) => setBulkDownloadProgress({ current, total }),
             async (reg) => {
-              setBulkReg(reg);
-              // Tunggu render dan config loading
-              await new Promise(resolve => setTimeout(resolve, 800));
-            }
+               setBulkReg(reg);
+               // Tunggu render dan config loading lebih lama agar stabil
+               await new Promise(resolve => setTimeout(resolve, 1000));
+             }
           );
         } catch (err) {
           console.error("Bulk download error:", err);
