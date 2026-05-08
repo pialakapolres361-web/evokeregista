@@ -98,15 +98,15 @@ export const generateCanvas = async (elementId: string, scale: number = 3): Prom
   await new Promise(resolve => setTimeout(resolve, 500));
 
   try {
-    const canvas = await html2canvas(element, {
+    const baseOptions = {
       scale,
       useCORS: true,
       allowTaint: false,
       logging: false,
-      backgroundColor: '#ffffff',
+      backgroundColor: '#ffffff' as any,
       width: element.offsetWidth,
       height: element.offsetHeight,
-      onclone: (clonedDoc) => {
+      onclone: (clonedDoc: Document) => {
         const style = clonedDoc.createElement('style');
         style.innerHTML = `
           #id-card-capture, #id-card-capture-admin, #id-card-bulk-capture {
@@ -132,15 +132,29 @@ export const generateCanvas = async (elementId: string, scale: number = 3): Prom
 
         const clonedEl = clonedDoc.getElementById(elementId);
         if (clonedEl) {
-          clonedEl.style.transform = 'none';
-          clonedEl.style.opacity = '1';
-          clonedEl.style.boxShadow = 'none';
-          clonedEl.style.border = 'none';
-          clonedEl.style.borderRadius = '0';
+          (clonedEl as HTMLElement).style.transform = 'none';
+          (clonedEl as HTMLElement).style.opacity = '1';
+          (clonedEl as HTMLElement).style.boxShadow = 'none';
+          (clonedEl as HTMLElement).style.border = 'none';
+          (clonedEl as HTMLElement).style.borderRadius = '0';
         }
-      }
-    });
-    return canvas;
+      },
+    };
+
+    // Prefer foreignObjectRendering to avoid html2canvas CSS color parsing limitations (oklch).
+    try {
+      const canvas = await html2canvas(element, {
+        ...baseOptions,
+        foreignObjectRendering: true,
+      } as any);
+      return canvas;
+    } catch (e) {
+      const canvas = await html2canvas(element, {
+        ...baseOptions,
+        foreignObjectRendering: false,
+      } as any);
+      return canvas;
+    }
   } catch (error) {
     console.error('Error generating Canvas:', error);
     return null;
