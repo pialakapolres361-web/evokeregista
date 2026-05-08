@@ -23,6 +23,67 @@ export const generateCanvas = async (elementId: string, scale: number = 3): Prom
   const originalOpacity = element.style.opacity;
   element.style.transform = 'none';
   element.style.opacity = '1';
+
+  const sanitized = new Map<HTMLElement, Partial<Record<string, string>>>();
+  const colorProps = [
+    'color',
+    'backgroundColor',
+    'borderTopColor',
+    'borderRightColor',
+    'borderBottomColor',
+    'borderLeftColor',
+    'outlineColor',
+    'textDecorationColor',
+    'caretColor',
+    'fill',
+    'stroke',
+  ];
+
+  const root = element as HTMLElement;
+  const targets = [root, ...Array.from(root.querySelectorAll('*'))] as HTMLElement[];
+  for (const node of targets) {
+    const cs = window.getComputedStyle(node);
+    let didChange = false;
+    const prev: Partial<Record<string, string>> = {};
+
+    const boxShadow = cs.boxShadow;
+    if (typeof boxShadow === 'string' && boxShadow.includes('oklch')) {
+      prev.boxShadow = node.style.boxShadow;
+      node.style.boxShadow = 'none';
+      didChange = true;
+    }
+
+    const textShadow = (cs as any).textShadow as string | undefined;
+    if (typeof textShadow === 'string' && textShadow.includes('oklch')) {
+      prev.textShadow = (node.style as any).textShadow;
+      (node.style as any).textShadow = 'none';
+      didChange = true;
+    }
+
+    const filter = cs.filter;
+    if (typeof filter === 'string' && filter.includes('oklch')) {
+      prev.filter = node.style.filter;
+      node.style.filter = 'none';
+      didChange = true;
+    }
+
+    for (const prop of colorProps) {
+      const v = (cs as any)[prop];
+      if (typeof v === 'string' && v.includes('oklch')) {
+        prev[prop] = (node.style as any)[prop];
+        if (prop === 'color' || prop === 'caretColor' || prop === 'textDecorationColor' || prop === 'fill' || prop === 'stroke') {
+          (node.style as any)[prop] = '#000000';
+        } else if (prop === 'backgroundColor') {
+          (node.style as any)[prop] = node === root ? '#ffffff' : 'transparent';
+        } else {
+          (node.style as any)[prop] = 'transparent';
+        }
+        didChange = true;
+      }
+    }
+
+    if (didChange) sanitized.set(node, prev);
+  }
   
   const imgs = Array.from(element.querySelectorAll('img'));
   const loadPromises = imgs.map(img => {
@@ -76,38 +137,6 @@ export const generateCanvas = async (elementId: string, scale: number = 3): Prom
           clonedEl.style.boxShadow = 'none';
           clonedEl.style.border = 'none';
           clonedEl.style.borderRadius = '0';
-
-          // html2canvas does not support parsing oklch() colors.
-          // Tailwind v4 often produces computed colors in oklch(), so we sanitize them.
-          const view = clonedDoc.defaultView;
-          if (view) {
-            const nodes = [clonedEl, ...Array.from(clonedEl.querySelectorAll('*'))] as HTMLElement[];
-            for (const node of nodes) {
-              const cs = view.getComputedStyle(node);
-
-              // Remove shadows that may contain unsupported color functions.
-              if (cs.boxShadow && cs.boxShadow !== 'none') node.style.boxShadow = 'none';
-              if ((cs as any).textShadow && (cs as any).textShadow !== 'none') (node.style as any).textShadow = 'none';
-
-              const fixColor = (prop: keyof CSSStyleDeclaration, fallback: string) => {
-                const v = (cs as any)[prop];
-                if (typeof v === 'string' && v.includes('oklch')) {
-                  (node.style as any)[prop] = fallback;
-                }
-              };
-
-              // Prefer not to override inline styles; only override when computed is oklch()
-              fixColor('color', '#000000');
-              fixColor('backgroundColor', 'transparent');
-              fixColor('borderTopColor', 'transparent');
-              fixColor('borderRightColor', 'transparent');
-              fixColor('borderBottomColor', 'transparent');
-              fixColor('borderLeftColor', 'transparent');
-              fixColor('outlineColor', 'transparent');
-            }
-            // Keep root background solid white so the capture isn't transparent.
-            clonedEl.style.backgroundColor = '#ffffff';
-          }
         }
       }
     });
@@ -119,6 +148,11 @@ export const generateCanvas = async (elementId: string, scale: number = 3): Prom
     if (element) {
       element.style.transform = originalTransform;
       element.style.opacity = originalOpacity;
+    }
+    for (const [node, prev] of sanitized.entries()) {
+      for (const [k, v] of Object.entries(prev)) {
+        (node.style as any)[k] = v ?? '';
+      }
     }
   }
 };
