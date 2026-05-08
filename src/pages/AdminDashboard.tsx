@@ -782,7 +782,7 @@ export default function AdminDashboard({ config }: AdminDashboardProps) {
                             await generateAndDownloadPDF('id-card-capture-admin', selectedRegForPdf, config?.paperSize, { openWindow: win });
                           } catch (err) {
                             console.error("Download single PDF error:", err);
-                            alert("Gagal mengunduh PDF. Silahkan coba lagi.");
+                            alert(`Gagal mengunduh PDF. ${err instanceof Error ? err.message : ''}`.trim());
                             if (win && !win.closed) win.close();
                           } finally {
                             setSelectedRegForPdf(null);

@@ -207,7 +207,7 @@ export default function PublicHome({ config }: PublicHomeProps) {
                             await generateAndDownloadPDF('id-card-capture', foundRegistration, paperSize, { openWindow: win });
                           } catch (err) {
                             console.error("Public download error:", err);
-                            alert("Gagal mengunduh PDF. Silahkan coba lagi.");
+                            alert(`Gagal mengunduh PDF. ${err instanceof Error ? err.message : ''}`.trim());
                             if (win && !win.closed) win.close();
                           }
                         }}

@@ -46,6 +46,28 @@ export const generateCanvas = async (elementId: string, scale: number = 3): Prom
       width: element.offsetWidth,
       height: element.offsetHeight,
       onclone: (clonedDoc) => {
+        const style = clonedDoc.createElement('style');
+        style.innerHTML = `
+          #id-card-capture, #id-card-capture-admin, #id-card-bulk-capture {
+            background-color: #ffffff !important;
+            box-shadow: none !important;
+            transform: none !important;
+            margin: 0 !important;
+            border: none !important;
+            border-radius: 0 !important;
+          }
+          .bg-white { background-color: #ffffff !important; }
+          .text-white { color: #ffffff !important; }
+          .bg-rose-500 { background-color: #f43f5e !important; }
+          .bg-rose-600 { background-color: #e11d48 !important; }
+          .bg-slate-900 { background-color: #0f172a !important; }
+          .bg-slate-950 { background-color: #020617 !important; }
+          .border-neutral-100 { border-color: #f5f5f5 !important; }
+          .border-slate-800 { border-color: #1e293b !important; }
+          * { box-shadow: none !important; text-shadow: none !important; }
+        `;
+        clonedDoc.head.appendChild(style);
+
         const clonedEl = clonedDoc.getElementById(elementId);
         if (clonedEl) {
           clonedEl.style.transform = 'none';
@@ -74,9 +96,9 @@ export const generateAndDownloadPDF = async (
   paperSize?: 'id_card' | 'b2' | 'b3',
   options?: { openWindow?: Window | null }
 ) => {
-  const canvas = await generateCanvas(elementId, 3);
+  const canvas = await generateCanvas(elementId, 2);
   if (!canvas) {
-    throw new Error(`CAPTURE_NOT_FOUND:${elementId}`);
+    throw new Error(`CAPTURE_FAILED:${elementId}`);
   }
 
   const imgData = canvas.toDataURL('image/png', 1.0);
