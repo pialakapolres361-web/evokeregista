@@ -22,7 +22,7 @@ interface AdminDashboardProps {
 }
 
 export default function AdminDashboard({ config }: AdminDashboardProps) {
-  const [activeTab, setActiveTab] = useState<'data' | 'form' | 'pdf' | 'settings'>('data');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'data' | 'form' | 'pdf' | 'settings'>('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [loading, setLoading] = useState(true);
@@ -244,7 +244,13 @@ export default function AdminDashboard({ config }: AdminDashboardProps) {
           </button>
         </div>
         
-        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+        <nav className="flex-1 px-4 space-y-2 py-6 overflow-y-auto custom-scrollbar">
+          <SidebarItem 
+            active={activeTab === 'dashboard'} 
+            onClick={() => { setActiveTab('dashboard'); setIsMobileMenuOpen(false); }} 
+            icon={<Layout size={18} />} 
+            label="Dashboard" 
+          />
           <SidebarItem 
             active={activeTab === 'data'} 
             onClick={() => { setActiveTab('data'); setIsMobileMenuOpen(false); }} 
@@ -289,6 +295,7 @@ export default function AdminDashboard({ config }: AdminDashboardProps) {
               <Menu size={24} />
             </button>
             <h2 className="text-xl md:text-3xl lg:text-4xl font-black italic tracking-tighter uppercase truncate">
+              {activeTab === 'dashboard' && 'Dashboard'}
               {activeTab === 'data' && 'Pendaftar'}
               {activeTab === 'form' && 'Form Builder'}
               {activeTab === 'pdf' && 'PDF Builder'}
@@ -310,6 +317,105 @@ export default function AdminDashboard({ config }: AdminDashboardProps) {
         </header>
 
         <div className="flex-1 overflow-y-auto p-4 md:p-8">
+          {activeTab === 'dashboard' && (
+            <div className="space-y-8">
+              {/* Main Stats */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="bg-slate-900/50 border border-slate-800 p-8 rounded-[32px] shadow-2xl backdrop-blur-sm relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform">
+                    <Users size={80} className="text-rose-500" />
+                  </div>
+                  <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500 mb-2 block">TOTAL PENDAFTAR</span>
+                  <h3 className="text-6xl font-black italic tracking-tighter text-white">{registrations.length}</h3>
+                  <div className="mt-4 flex gap-2">
+                    <span className="px-3 py-1 bg-rose-500/10 text-rose-500 text-[10px] font-bold rounded-full border border-rose-500/20 uppercase tracking-widest">Global Data</span>
+                  </div>
+                </div>
+
+                <div className="bg-slate-900/50 border border-slate-800 p-8 rounded-[32px] shadow-2xl backdrop-blur-sm relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform">
+                    <UserPlus size={80} className="text-blue-500" />
+                  </div>
+                  <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500 mb-2 block">TOTAL PESERTA</span>
+                  <h3 className="text-6xl font-black italic tracking-tighter text-white">
+                    {registrations.filter(r => r.type === 'peserta').length}
+                  </h3>
+                  <div className="mt-4 flex gap-2">
+                    <span className="px-3 py-1 bg-blue-500/10 text-blue-500 text-[10px] font-bold rounded-full border border-blue-500/20 uppercase tracking-widest italic">Atlet / Player</span>
+                  </div>
+                </div>
+
+                <div className="bg-slate-900/50 border border-slate-800 p-8 rounded-[32px] shadow-2xl backdrop-blur-sm relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform">
+                    <Trophy size={80} className="text-amber-500" />
+                  </div>
+                  <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500 mb-2 block">TOTAL PELATIH</span>
+                  <h3 className="text-6xl font-black italic tracking-tighter text-white">
+                    {registrations.filter(r => r.type === 'pelatih').length}
+                  </h3>
+                  <div className="mt-4 flex gap-2">
+                    <span className="px-3 py-1 bg-amber-500/10 text-amber-500 text-[10px] font-bold rounded-full border border-amber-500/20 uppercase tracking-widest italic">Official / Coach</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Dynamic Recaps from Form Fields */}
+              <div className="space-y-6">
+                <div className="flex items-center gap-3">
+                  <div className="h-px flex-1 bg-slate-800" />
+                  <h4 className="text-[10px] font-black uppercase tracking-[0.5em] text-slate-600">DYNAMIC FIELD RECAPS</h4>
+                  <div className="h-px flex-1 bg-slate-800" />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {fields
+                    .filter(f => f.type === 'select' || f.type === 'text')
+                    .map(field => {
+                      // Calculate distribution
+                      const counts: Record<string, number> = {};
+                      registrations.forEach(reg => {
+                        const val = reg.customFields?.[field.id] || 'TIDAK DIISI';
+                        const normalizedVal = typeof val === 'string' ? val.toUpperCase() : val;
+                        counts[normalizedVal] = (counts[normalizedVal] || 0) + 1;
+                      });
+
+                      const sortedValues = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+
+                      if (sortedValues.length === 0) return null;
+
+                      return (
+                        <div key={field.id} className="bg-slate-900/30 border border-slate-800/50 rounded-[32px] p-8 shadow-xl">
+                          <div className="flex justify-between items-center mb-6">
+                            <h5 className="text-sm font-black italic tracking-tighter text-rose-500 uppercase">{field.label}</h5>
+                            <span className="text-[10px] font-bold text-slate-600 tracking-widest">{sortedValues.length} UNIQUE VALUES</span>
+                          </div>
+                          <div className="space-y-3">
+                            {sortedValues.slice(0, 8).map(([val, count]) => (
+                              <div key={val} className="flex items-center justify-between group">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight truncate max-w-[70%] group-hover:text-white transition-colors">{val}</span>
+                                <div className="flex items-center gap-3 flex-1 ml-4">
+                                  <div className="h-1 flex-1 bg-slate-800 rounded-full overflow-hidden">
+                                    <div 
+                                      className="h-full bg-rose-600/50 group-hover:bg-rose-600 transition-all" 
+                                      style={{ width: `${(count / registrations.length) * 100}%` }}
+                                    />
+                                  </div>
+                                  <span className="text-xs font-black italic text-white min-w-[30px] text-right">{count}</span>
+                                </div>
+                              </div>
+                            ))}
+                            {sortedValues.length > 8 && (
+                              <p className="text-[10px] font-bold text-slate-600 text-center mt-4 tracking-widest italic">+ {sortedValues.length - 8} VALUES LAINNYA</p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'data' && (
             <div className="bg-slate-900/50 rounded-2xl border border-slate-800 overflow-hidden shadow-2xl backdrop-blur-sm">
               <div className="p-4 md:p-6 border-b border-slate-800 flex flex-col sm:flex-row justify-between gap-4 md:gap-6">
