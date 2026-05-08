@@ -62,6 +62,7 @@ export const generateCanvas = async (elementId: string, scale: number = 3): Prom
           .bg-rose-600 { background-color: #e11d48 !important; }
           .bg-slate-900 { background-color: #0f172a !important; }
           .bg-slate-950 { background-color: #020617 !important; }
+          .bg-slate-50 { background-color: #f8fafc !important; }
           .border-neutral-100 { border-color: #f5f5f5 !important; }
           .border-slate-800 { border-color: #1e293b !important; }
           * { box-shadow: none !important; text-shadow: none !important; }
@@ -75,6 +76,38 @@ export const generateCanvas = async (elementId: string, scale: number = 3): Prom
           clonedEl.style.boxShadow = 'none';
           clonedEl.style.border = 'none';
           clonedEl.style.borderRadius = '0';
+
+          // html2canvas does not support parsing oklch() colors.
+          // Tailwind v4 often produces computed colors in oklch(), so we sanitize them.
+          const view = clonedDoc.defaultView;
+          if (view) {
+            const nodes = [clonedEl, ...Array.from(clonedEl.querySelectorAll('*'))] as HTMLElement[];
+            for (const node of nodes) {
+              const cs = view.getComputedStyle(node);
+
+              // Remove shadows that may contain unsupported color functions.
+              if (cs.boxShadow && cs.boxShadow !== 'none') node.style.boxShadow = 'none';
+              if ((cs as any).textShadow && (cs as any).textShadow !== 'none') (node.style as any).textShadow = 'none';
+
+              const fixColor = (prop: keyof CSSStyleDeclaration, fallback: string) => {
+                const v = (cs as any)[prop];
+                if (typeof v === 'string' && v.includes('oklch')) {
+                  (node.style as any)[prop] = fallback;
+                }
+              };
+
+              // Prefer not to override inline styles; only override when computed is oklch()
+              fixColor('color', '#000000');
+              fixColor('backgroundColor', 'transparent');
+              fixColor('borderTopColor', 'transparent');
+              fixColor('borderRightColor', 'transparent');
+              fixColor('borderBottomColor', 'transparent');
+              fixColor('borderLeftColor', 'transparent');
+              fixColor('outlineColor', 'transparent');
+            }
+            // Keep root background solid white so the capture isn't transparent.
+            clonedEl.style.backgroundColor = '#ffffff';
+          }
         }
       }
     });
