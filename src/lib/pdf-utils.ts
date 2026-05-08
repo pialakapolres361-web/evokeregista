@@ -7,8 +7,18 @@ import { saveAs } from 'file-saver';
 /**
  * Generates a PDF for a single registration and returns it as a Blob.
  */
-export const generatePDFData = async (elementId: string, registration: Registration, paperSize?: 'id_card' | 'b2' | 'b3'): Promise<ArrayBuffer | null> => {
-  const element = document.getElementById(elementId);
+export const generatePDFBlob = async (elementId: string, registration: Registration, paperSize?: 'id_card' | 'b2' | 'b3'): Promise<Blob | null> => {
+  let element = document.getElementById(elementId);
+  
+  // Retry mechanism if element is not yet in DOM (useful for bulk rendering)
+  if (!element) {
+    for (let i = 0; i < 5; i++) {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      element = document.getElementById(elementId);
+      if (element) break;
+    }
+  }
+
   if (!element) {
     console.error('Element not found for capture:', elementId);
     return null;
@@ -20,8 +30,8 @@ export const generatePDFData = async (elementId: string, registration: Registrat
   element.style.transform = 'none';
   element.style.opacity = '1';
   
-  // Wait for layout stability
-  await new Promise(resolve => setTimeout(resolve, 200));
+  // Wait for layout stability and images to load
+  await new Promise(resolve => setTimeout(resolve, 500));
 
   try {
     const canvas = await html2canvas(element, {
@@ -40,6 +50,12 @@ export const generatePDFData = async (elementId: string, registration: Registrat
           clonedEl.style.boxShadow = 'none';
           clonedEl.style.border = 'none';
           clonedEl.style.borderRadius = '0';
+          // Ensure all images in clone are also visible
+          const imgs = clonedEl.querySelectorAll('img');
+          imgs.forEach(img => {
+            img.style.opacity = '1';
+            img.style.visibility = 'visible';
+          });
         }
       }
     });
@@ -68,20 +84,21 @@ export const generatePDFData = async (elementId: string, registration: Registrat
     const pdfHeight = pdf.internal.pageSize.getHeight();
 
     pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-    return pdf.output('arraybuffer');
+    return pdf.output('blob');
   } catch (error) {
-    console.error('Error generating PDF Data:', error);
+    console.error('Error generating PDF Blob:', error);
     return null;
   } finally {
-    element.style.transform = originalTransform;
-    element.style.opacity = originalOpacity;
+    if (element) {
+      element.style.transform = originalTransform;
+      element.style.opacity = originalOpacity;
+    }
   }
 };
 
 export const generateAndDownloadPDF = async (elementId: string, registration: Registration, paperSize?: 'id_card' | 'b2' | 'b3') => {
-  const data = await generatePDFData(elementId, registration, paperSize);
-  if (data) {
-    const blob = new Blob([data], { type: 'application/pdf' });
+  const blob = await generatePDFBlob(elementId, registration, paperSize);
+  if (blob) {
     const fileName = `KARTU_SILAT_${registration.id}_${registration.fullName.replace(/\s+/g, '_')}.pdf`;
     saveAs(blob, fileName);
   }
@@ -115,16 +132,16 @@ export const downloadBulkZip = async (
     }
 
     // Use a specific ID for bulk capture to avoid conflicts
-    const data = await generatePDFData('id-card-bulk-capture', reg, paperSize);
-    if (data && folder) {
+    const blob = await generatePDFBlob('id-card-bulk-capture', reg, paperSize);
+    if (blob && folder) {
       const fileName = `KARTU_${reg.id}_${reg.fullName.replace(/\s+/g, '_')}.pdf`;
-      folder.file(fileName, data);
+      folder.file(fileName, blob);
       successCount++;
     }
   }
 
   if (successCount === 0) {
-    throw new Error("Gagal membuat file PDF. Silahkan coba lagi.");
+    throw new Error("Gagal membuat file PDF. Silahkan periksa koneksi internet atau data pendaftar.");
   }
 
   const content = await zip.generateAsync({ 

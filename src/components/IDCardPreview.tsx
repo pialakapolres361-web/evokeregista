@@ -55,7 +55,6 @@ export default function IDCardPreview({ registration, containerRef, containerId 
         const { width } = entry.contentRect;
         const designWidth = config.paperSize?.startsWith('b') ? 350 : 450;
         
-        // Add a small buffer to avoid floating point layout rounding issues
         if (width < designWidth) {
            setScale(width / designWidth);
         } else {
@@ -68,10 +67,8 @@ export default function IDCardPreview({ registration, containerRef, containerId 
     return () => observer.disconnect();
   }, [config]);
 
-  if (loading || !config) return <div className="aspect-[3/4] bg-neutral-100 animate-pulse rounded-2xl w-full max-w-[450px] mx-auto" />;
-
-  // Sort keys to ensure predictable rendering order (Core fields first, then Custom fields by their 'order' from form_builder)
-  const sortedElementKeys = Object.keys(config.elements).sort((a, b) => {
+  // Sort keys to ensure predictable rendering order
+  const sortedElementKeys = config ? Object.keys(config.elements).sort((a, b) => {
     const coreOrder = ['photo', 'name', 'id'];
     const idxA = coreOrder.indexOf(a);
     const idxB = coreOrder.indexOf(b);
@@ -80,25 +77,24 @@ export default function IDCardPreview({ registration, containerRef, containerId 
     if (idxA !== -1) return -1;
     if (idxB !== -1) return 1;
 
-    // For custom fields, use the order from form_builder
     const fieldA = fields.find(f => f.id === a);
     const fieldB = fields.find(f => f.id === b);
     return (fieldA?.order || 0) - (fieldB?.order || 0);
-  });
+  }) : [];
 
   const designWidth = 500;
-  const designHeight = config.paperSize === 'b2' ? 707 : config.paperSize === 'b3' ? 708 : 315;
+  const designHeight = config?.paperSize === 'b2' ? 707 : config?.paperSize === 'b3' ? 708 : 315;
 
   return (
     <div 
       ref={wrapperRef} 
       className="w-full flex justify-center overflow-hidden"
-      style={{ height: `${designHeight * scale}px` }}
+      style={{ height: config ? `${designHeight * scale}px` : '315px' }}
     >
       <div 
         ref={containerRef}
         id={containerId}
-        className="relative overflow-hidden rounded-2xl bg-white border border-neutral-100 origin-top-left"
+        className={`relative overflow-hidden rounded-2xl bg-white border border-neutral-100 origin-top-left transition-opacity duration-300 ${!config ? 'opacity-0' : 'opacity-100'}`}
         style={{ 
           backgroundColor: '#ffffff',
           width: `${designWidth}px`,
@@ -108,78 +104,85 @@ export default function IDCardPreview({ registration, containerRef, containerId 
           flexShrink: 0
         }}
       >
-        {/* Background Image as an actual IMG tag for better PDF capture reliability */}
-        {config.backgroundUrl && (
-          <img 
-            src={config.backgroundUrl}
-            alt="Background"
-            crossOrigin="anonymous"
-            className="absolute inset-0 w-full h-full pointer-events-none"
-            style={{ 
-              objectFit: (config.backgroundSize as any) || 'cover',
-              objectPosition: config.backgroundPosition || 'center'
-            }}
-          />
-        )}
-
-        {/* Render elements in sorted order */}
-        {sortedElementKeys.map((key) => {
-          const item = config.elements[key];
-          const el = item as { x: number; y: number; fontSize: number; color?: string; width?: number; height?: number };
-          if (key === 'photo') {
-            if (!registration.photoUrl) return null;
-            return (
-              <div 
-                key={key}
-                className="absolute border-4 border-white shadow-lg overflow-hidden bg-white"
+        {(!config || loading) ? (
+          <div className="absolute inset-0 flex items-center justify-center bg-slate-50">
+            <div className="w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : (
+          <>
+            {/* Background Image */}
+            {config.backgroundUrl && (
+              <img 
+                src={config.backgroundUrl}
+                alt="Background"
+                crossOrigin="anonymous"
+                className="absolute inset-0 w-full h-full pointer-events-none"
                 style={{ 
-                  left: `${el.x - (el.width || 0) / 2}px`, 
-                  top: `${el.y}px`, 
-                  width: `${el.width}px`, 
-                  height: `${el.height}px`
+                  objectFit: (config.backgroundSize as any) || 'cover',
+                  objectPosition: config.backgroundPosition || 'center'
                 }}
-              >
+              />
+            )}
+
+            {/* Render elements in sorted order */}
+            {sortedElementKeys.map((key) => {
+              const item = config.elements[key];
+              const el = item as { x: number; y: number; fontSize: number; color?: string; width?: number; height?: number };
+              if (key === 'photo') {
+                if (!registration.photoUrl) return null;
+                return (
+                  <div 
+                    key={key}
+                    className="absolute border-4 border-white shadow-lg overflow-hidden bg-white"
+                    style={{ 
+                      left: `${el.x - (el.width || 0) / 2}px`, 
+                      top: `${el.y}px`, 
+                      width: `${el.width}px`, 
+                      height: `${el.height}px`
+                    }}
+                  >
+                    <div 
+                      className="w-full h-full"
+                      style={{
+                        backgroundImage: `url(${registration.photoUrl})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                        backgroundRepeat: 'no-repeat'
+                      }}
+                    />
+                  </div>
+                );
+              }
+
+              let content = '';
+              if (key === 'name') content = registration.fullName;
+              else if (key === 'id') content = registration.id;
+              else {
+                content = registration.customFields?.[key] || '';
+              }
+
+              if (!content) return null;
+
+              return (
                 <div 
-                  className="w-full h-full"
-                  style={{
-                    backgroundImage: `url(${registration.photoUrl})`,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                    backgroundRepeat: 'no-repeat'
+                  key={key}
+                  className={`absolute font-bold tracking-tight uppercase ${key === 'id' ? 'font-mono' : ''}`}
+                  style={{ 
+                    left: `${el.x - 1000}px`, 
+                    width: '2000px',
+                    top: `${el.y}px`, 
+                    fontSize: `${el.fontSize}px`,
+                    color: el.color || (key === 'id' ? '#64748b' : '#0f172a'),
+                    textAlign: 'center',
+                    whiteSpace: 'nowrap'
                   }}
-                />
-              </div>
-            );
-          }
-
-          let content = '';
-          if (key === 'name') content = registration.fullName;
-          else if (key === 'id') content = registration.id;
-          else {
-            // Check custom fields
-            content = registration.customFields?.[key] || '';
-          }
-
-          if (!content) return null;
-
-          return (
-            <div 
-              key={key}
-              className={`absolute font-bold tracking-tight uppercase ${key === 'id' ? 'font-mono' : ''}`}
-              style={{ 
-                left: `${el.x - 1000}px`, 
-                width: '2000px',
-                top: `${el.y}px`, 
-                fontSize: `${el.fontSize}px`,
-                color: el.color || (key === 'id' ? '#64748b' : '#0f172a'),
-                textAlign: 'center',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              {content}
-            </div>
-          );
-        })}
+                >
+                  {content}
+                </div>
+              );
+            })}
+          </>
+        )}
       </div>
     </div>
   );
