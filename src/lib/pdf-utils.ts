@@ -1,5 +1,6 @@
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
+import JSZip from 'jszip';
 import { PdfConfig, Registration } from '../types';
 import { saveAs } from 'file-saver';
 
@@ -31,7 +32,23 @@ function parseHexColor(input?: string) {
   return null;
 }
 
+function sanitizeFilename(input: string) {
+  return input
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[\\/:*?"<>|]/g, '')
+    .replace(/\s+/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 120);
+}
+
 async function fetchAsDataUrl(url: string) {
+  if (url.startsWith('data:')) {
+    const mime = url.slice(5, url.indexOf(';')) || 'image/png';
+    return { dataUrl: url, mime };
+  }
+
   const res = await fetch(url, { mode: 'cors', cache: 'no-cache' });
   if (!res.ok) throw new Error(`Gagal memuat gambar (${res.status})`);
   const blob = await res.blob();
@@ -334,6 +351,54 @@ export const generateAndDownloadPDFFromConfig = async (
   } else {
     saveAs(blob, fileName);
   }
+};
+
+export const downloadZipPDFsFromConfig = async (
+  registrations: Registration[],
+  pdfConfig: PdfConfig,
+  role: 'peserta' | 'pelatih',
+  onProgress?: (current: number, total: number) => void
+) => {
+  if (registrations.length === 0) return;
+
+  const zip = new JSZip();
+  const folderName = role === 'peserta' ? 'PDF_PESERTA' : 'PDF_PELATIH';
+  const folder = zip.folder(folderName) || zip;
+
+  const total = registrations.length;
+  let successCount = 0;
+
+  for (let i = 0; i < registrations.length; i++) {
+    const reg = registrations[i];
+    if (onProgress) onProgress(i + 1, total);
+
+    try {
+      const blob = await generatePDFBlobFromConfig(reg, pdfConfig);
+      const safeName = sanitizeFilename(reg.fullName || 'TANPA_NAMA');
+      const safeId = sanitizeFilename(reg.id || String(i + 1));
+      const fileName = `KARTU_${folderName}_${safeId}_${safeName}.pdf`;
+      folder.file(fileName, blob);
+      successCount++;
+    } catch (e) {
+      // skip failed entry
+    }
+
+    if (i % 5 === 0) {
+      await new Promise(resolve => setTimeout(resolve, 0));
+    }
+  }
+
+  if (successCount === 0) {
+    throw new Error('Gagal membuat file PDF untuk semua pendaftar.');
+  }
+
+  const zipBlob = await zip.generateAsync({
+    type: 'blob',
+    compression: 'DEFLATE',
+    compressionOptions: { level: 6 },
+  });
+
+  saveAs(zipBlob, `KARTU_${folderName}_EVOKA_${new Date().toISOString().split('T')[0]}.zip`);
 };
 
 // Backward compatible API: still supports html2canvas capture, but will not be used by UI anymore.

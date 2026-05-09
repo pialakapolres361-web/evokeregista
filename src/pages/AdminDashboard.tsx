@@ -15,7 +15,7 @@ import { Registration, FormField, WebConfig, PdfConfig } from '../types';
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 import IDCardPreview from '../components/IDCardPreview';
-import { generateAndDownloadPDFFromConfig, downloadMultiPagePDF } from '../lib/pdf-utils';
+import { generateAndDownloadPDFFromConfig, downloadZipPDFsFromConfig } from '../lib/pdf-utils';
 
 interface AdminDashboardProps {
   config: WebConfig;
@@ -194,23 +194,22 @@ export default function AdminDashboard({ config }: AdminDashboardProps) {
     }
 
     const config = role === 'pelatih' ? pdfConfigPelatih : pdfConfigPeserta;
+    if (!config) {
+      alert('Konfigurasi PDF belum tersedia.');
+      return;
+    }
     
     setConfirmModal({
       isOpen: true,
-      title: `UNDUH PDF MASSAL ${role.toUpperCase()}`,
-      message: `Sistem akan menggabungkan ${targetRegs.length} ID Card ke dalam SATU file PDF. Ini adalah cara tercepat dan termudah untuk mencetak banyak kartu sekaligus. Lanjutkan?`,
+      title: `UNDUH ZIP PDF ${role.toUpperCase()}`,
+      message: `Sistem akan membuat 1 file ZIP berisi ${targetRegs.length} file PDF (1 PDF per pendaftar). Lanjutkan?`,
       onConfirm: async () => {
         try {
-          await downloadMultiPagePDF(
-            targetRegs, 
-            config?.paperSize, 
+          await downloadZipPDFsFromConfig(
+            targetRegs,
+            config,
             role,
-            (current, total) => setBulkDownloadProgress({ current, total }),
-            async (reg) => {
-                setBulkReg(reg);
-                // Tunggu render dan sinkronisasi state React
-                await new Promise(resolve => setTimeout(resolve, 300));
-             }
+            (current, total) => setBulkDownloadProgress({ current, total })
           );
         } catch (err) {
           console.error("Bulk download error:", err);
@@ -729,10 +728,10 @@ export default function AdminDashboard({ config }: AdminDashboardProps) {
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 bg-slate-950/95 backdrop-blur-2xl">
           <div className="bg-slate-900 border border-slate-800 rounded-[40px] w-full max-w-md overflow-hidden shadow-2xl p-10 text-center">
             <Loader2 className="w-12 h-12 animate-spin text-rose-500 mx-auto mb-6" />
-            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-rose-500">MENGOMPRES DATA</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-rose-500">MEMBUAT ARSIP</span>
             <h3 className="text-3xl font-black italic tracking-tighter uppercase text-white mt-2 mb-2">PROSES ZIP</h3>
             <p className="text-slate-400 font-bold uppercase tracking-widest text-xs mb-8">
-              MOHON TUNGGU, SEDANG MEMPROSES {bulkDownloadProgress.current} DARI {bulkDownloadProgress.total} FILE
+              MOHON TUNGGU, SEDANG MEMBUAT {bulkDownloadProgress.current} DARI {bulkDownloadProgress.total} PDF
             </p>
             <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
               <div 
