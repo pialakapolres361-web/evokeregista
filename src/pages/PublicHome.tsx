@@ -16,6 +16,7 @@ export default function PublicHome({ config }: PublicHomeProps) {
   const [searchId, setSearchId] = useState('');
   const [searching, setSearching] = useState(false);
   const [foundRegistration, setFoundRegistration] = useState<Registration | null>(null);
+  const [editRegistration, setEditRegistration] = useState<Registration | null>(null);
   const [fields, setFields] = useState<FormField[]>([]);
 
   useEffect(() => {
@@ -189,9 +190,9 @@ export default function PublicHome({ config }: PublicHomeProps) {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                        <button 
                         onClick={() => {
+                          setEditRegistration(foundRegistration);
                           setIsEditing(true);
                           setFoundRegistration(null);
-                          setShowForm(true);
                         }}
                         className="w-full py-4 sm:py-5 rounded-2xl bg-slate-800 text-white font-black italic tracking-tighter uppercase hover:bg-slate-700 transition-all text-sm border border-slate-700"
                        >
@@ -232,7 +233,7 @@ export default function PublicHome({ config }: PublicHomeProps) {
 
         {/* Edit Form Modal */}
         <AnimatePresence>
-          {isEditing && foundRegistration && (
+          {isEditing && editRegistration && (
             <motion.div 
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -246,7 +247,10 @@ export default function PublicHome({ config }: PublicHomeProps) {
                     <h2 className="text-6xl font-black italic tracking-tighter text-white uppercase mt-2">EDIT INFO</h2>
                   </div>
                   <button 
-                    onClick={() => setIsEditing(false)}
+                    onClick={() => {
+                      setIsEditing(false);
+                      setEditRegistration(null);
+                    }}
                     className="p-4 bg-slate-900 border border-slate-800 text-white rounded-full hover:bg-slate-800 transition-all"
                   >
                     <X size={24} />
@@ -254,11 +258,12 @@ export default function PublicHome({ config }: PublicHomeProps) {
                 </div>
                 <RegistrationForm 
                   config={config} 
-                  initialRegistration={foundRegistration}
+                  type={editRegistration.type}
+                  initialRegistration={editRegistration}
                   onSuccess={(reg) => {
                     setIsEditing(false);
+                    setEditRegistration(null);
                     setFoundRegistration(reg);
-                    // Force refresh to update the detail view
                   }} 
                 />
               </div>

@@ -51,6 +51,8 @@ service cloud.firestore {
         isValidRegistration(incoming()) 
         && incoming().id == existing().id 
         && incoming().id == regId
+        && incoming().type == existing().type
+        && incoming().createdAt == existing().createdAt
       );
       
       allow delete: if isAdmin();
