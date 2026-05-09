@@ -32,6 +32,29 @@ function parseHexColor(input?: string) {
   return null;
 }
 
+function parseCssColorToRgb(input?: string) {
+  if (!input) return null;
+  const hex = parseHexColor(input);
+  if (hex) return hex;
+  if (typeof document === 'undefined' || !document.body) return null;
+
+  const probe = document.createElement('span');
+  probe.style.color = input;
+  probe.style.position = 'fixed';
+  probe.style.left = '-9999px';
+  probe.style.top = '-9999px';
+
+  try {
+    document.body.appendChild(probe);
+    const computed = getComputedStyle(probe).color;
+    const m = computed.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+    if (!m) return null;
+    return { r: Number(m[1]), g: Number(m[2]), b: Number(m[3]) };
+  } finally {
+    if (probe.parentNode) probe.parentNode.removeChild(probe);
+  }
+}
+
 function sanitizeFilename(input: string) {
   return input
     .normalize('NFKD')
@@ -321,7 +344,7 @@ export const generatePDFBlobFromConfig = async (
     const fontSize = (el.fontSize || 12) * Math.min(xScale, yScale);
     pdf.setFontSize(fontSize);
 
-    const c = parseHexColor(el.color);
+    const c = parseCssColorToRgb(el.color);
     if (c) pdf.setTextColor(c.r, c.g, c.b);
     else pdf.setTextColor(15, 23, 42);
 
