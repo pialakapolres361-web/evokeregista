@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Trophy, UserPlus, Download, Loader2, AlertCircle, ChevronRight, X } from 'lucide-react';
+import { Search, Trophy, UserPlus, Download, Loader2, AlertCircle, ChevronRight, X, FileText } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { doc, getDoc, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { Registration, WebConfig, FormField } from '../types';
