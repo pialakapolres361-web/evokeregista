@@ -52,7 +52,7 @@ export default function Login({ config }: LoginProps) {
               )}
             </button>
             <button
-              onClick={() => { window.history.pushState({}, '', '/'); window.dispatchEvent(new PopStateEvent('popstate')); }}
+              onClick={() => { window.location.hash = '#/'; }}
               className="w-full py-2 text-slate-500 text-[10px] font-black uppercase tracking-widest hover:text-white transition-colors"
             >
               Back to Public Portal

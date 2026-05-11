@@ -61,7 +61,7 @@ export default function PublicHome({ config }: PublicHomeProps) {
             <h1 className="text-3xl font-black tracking-tighter text-rose-500 italic">EVOKA REGIST</h1>
           </div>
           <button 
-            onClick={() => { window.history.pushState({}, '', '/admin'); window.dispatchEvent(new PopStateEvent('popstate')); }}
+            onClick={() => { window.location.hash = '#/admin'; }}
             className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 hover:text-white transition-colors"
           >
             Admin Panel
