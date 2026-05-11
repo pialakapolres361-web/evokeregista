@@ -25,6 +25,7 @@ export interface WebConfig {
   themeColor: string;
   isOpen: boolean;
   logoUrl?: string;
+  proposalUrl?: string;
 }
 
 export interface PdfConfig {

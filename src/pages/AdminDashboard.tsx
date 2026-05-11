@@ -4,7 +4,7 @@ import {
   Download, Plus, Trash2, Edit2, Save, 
   ChevronRight, Search, Filter, MoreVertical, 
   Check, X, AlertTriangle, Image as ImageIcon,
-  Loader2, Upload, Menu, UserPlus, Trophy
+  Loader2, Upload, Menu, UserPlus, Trophy, BookOpen
 } from 'lucide-react';
 import { auth, db, logout } from '../lib/firebase';
 import { 
@@ -22,7 +22,7 @@ interface AdminDashboardProps {
 }
 
 export default function AdminDashboard({ config }: AdminDashboardProps) {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'data' | 'form' | 'pdf' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'data' | 'form' | 'pdf' | 'proposal' | 'settings'>('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [loading, setLoading] = useState(true);
@@ -307,6 +307,12 @@ export default function AdminDashboard({ config }: AdminDashboardProps) {
             label="Visual PDF Builder" 
           />
           <SidebarItem 
+            active={activeTab === 'proposal'} 
+            onClick={() => { setActiveTab('proposal'); setIsMobileMenuOpen(false); }} 
+            icon={<BookOpen size={18} />} 
+            label="Upload Proposal" 
+          />
+          <SidebarItem 
             active={activeTab === 'settings'} 
             onClick={() => { setActiveTab('settings'); setIsMobileMenuOpen(false); }} 
             icon={<Settings size={18} />} 
@@ -336,6 +342,7 @@ export default function AdminDashboard({ config }: AdminDashboardProps) {
               {activeTab === 'data' && 'Pendaftar'}
               {activeTab === 'form' && 'Form Builder'}
               {activeTab === 'pdf' && 'PDF Builder'}
+              {activeTab === 'proposal' && 'Proposal'}
               {activeTab === 'settings' && 'Settings'}
             </h2>
             <div className="hidden sm:block px-3 py-1 bg-slate-800 rounded text-[10px] font-bold tracking-widest text-slate-400 shrink-0">
@@ -588,6 +595,7 @@ export default function AdminDashboard({ config }: AdminDashboardProps) {
               setPdfConfigPelatih={setPdfConfigPelatih}
             />
           )}
+          {activeTab === 'proposal' && <ProposalTab config={config} />}
           {activeTab === 'settings' && <SettingsTab config={config} />}
         </div>
       </main>
@@ -1613,6 +1621,159 @@ function PdfBuilderTab({
               </div>
             );
           })()}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProposalTab({ config }: { config: WebConfig }) {
+  const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [proposalUrl, setProposalUrl] = useState(config.proposalUrl || '');
+  const [fileName, setFileName] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Hanya izinkan PDF
+    if (file.type !== 'application/pdf') {
+      alert('Hanya file PDF yang diizinkan.');
+      return;
+    }
+
+    setUploading(true);
+    setFileName(file.name);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setProposalUrl(reader.result as string);
+      setUploading(false);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await setDoc(doc(db, 'settings', 'web_config'), { proposalUrl }, { merge: true });
+      alert('Proposal/Juknis berhasil disimpan!');
+    } catch (err) {
+      alert('Gagal menyimpan proposal.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRemove = async () => {
+    setSaving(true);
+    try {
+      await setDoc(doc(db, 'settings', 'web_config'), { proposalUrl: '' }, { merge: true });
+      setProposalUrl('');
+      setFileName('');
+      alert('Proposal berhasil dihapus.');
+    } catch (err) {
+      alert('Gagal menghapus proposal.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const isDataUrl = proposalUrl.startsWith('data:');
+  const hasProposal = proposalUrl.length > 0;
+
+  return (
+    <div className="max-w-2xl space-y-6">
+      <div className="bg-slate-900 p-8 rounded-[32px] border border-slate-800 shadow-2xl">
+        <span className="text-[10px] font-black uppercase tracking-[0.4em] text-rose-500">DOKUMEN</span>
+        <h3 className="font-black text-3xl italic tracking-tighter uppercase text-white mt-1 mb-2">Upload Proposal / Juknis</h3>
+        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest leading-relaxed">
+          Upload file PDF proposal atau juknis event. File ini akan bisa didownload oleh peserta di halaman publik.
+        </p>
+      </div>
+
+      <div className="bg-slate-900 p-8 rounded-[32px] border border-slate-800 shadow-2xl space-y-6">
+        {/* Upload Area */}
+        <div
+          onClick={() => fileInputRef.current?.click()}
+          className="border-2 border-dashed border-slate-700 hover:border-rose-500 rounded-2xl p-12 flex flex-col items-center justify-center gap-4 cursor-pointer transition-all group"
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/pdf"
+            onChange={handleFileUpload}
+            className="hidden"
+          />
+          {uploading ? (
+            <Loader2 className="animate-spin text-rose-500" size={40} />
+          ) : (
+            <Upload size={40} className="text-slate-600 group-hover:text-rose-500 transition-colors" />
+          )}
+          <div className="text-center">
+            <p className="text-sm font-black italic tracking-tighter uppercase text-white">
+              {uploading ? 'Memproses...' : 'Klik untuk upload PDF'}
+            </p>
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Format: PDF saja</p>
+          </div>
+        </div>
+
+        {/* URL Input */}
+        <div className="space-y-2">
+          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">ATAU MASUKKAN URL LANGSUNG</label>
+          <input
+            type="url"
+            value={isDataUrl ? '' : proposalUrl}
+            onChange={e => { setProposalUrl(e.target.value); setFileName(''); }}
+            placeholder="https://drive.google.com/..."
+            className="w-full px-6 py-4 bg-slate-950 border border-slate-800 rounded-2xl focus:border-rose-500 outline-none font-bold text-white text-sm"
+          />
+        </div>
+
+        {/* Status */}
+        {hasProposal && (
+          <div className="flex items-center gap-4 p-5 bg-slate-950 border border-slate-800 rounded-2xl">
+            <div className="w-12 h-12 rounded-xl bg-rose-500/10 flex items-center justify-center text-rose-500 shrink-0">
+              <FileText size={24} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-black uppercase tracking-widest text-white truncate">
+                {isDataUrl ? (fileName || 'File PDF terupload') : proposalUrl}
+              </p>
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
+                {isDataUrl ? 'FILE LOKAL (BASE64)' : 'URL EKSTERNAL'}
+              </p>
+            </div>
+            <button
+              onClick={handleRemove}
+              className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all shrink-0"
+              title="Hapus Proposal"
+            >
+              <Trash2 size={16} />
+            </button>
+          </div>
+        )}
+
+        {/* Actions */}
+        <div className="flex gap-4 pt-2">
+          {hasProposal && (
+            <a
+              href={proposalUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 py-4 rounded-2xl bg-slate-800 text-white font-black italic tracking-tighter uppercase hover:bg-slate-700 transition-all flex items-center justify-center gap-2 text-sm border border-slate-700"
+            >
+              <Download size={18} /> PREVIEW
+            </a>
+          )}
+          <button
+            onClick={handleSave}
+            disabled={saving || !hasProposal}
+            className="flex-1 py-4 rounded-2xl bg-rose-600 text-white font-black italic tracking-tighter uppercase hover:bg-rose-500 transition-all shadow-lg shadow-rose-600/20 flex items-center justify-center gap-2 text-sm disabled:opacity-40"
+          >
+            {saving ? <Loader2 className="animate-spin" size={18} /> : <><Save size={18} /> SIMPAN</>}
+          </button>
         </div>
       </div>
     </div>

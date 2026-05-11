@@ -61,7 +61,7 @@ export default function PublicHome({ config }: PublicHomeProps) {
             <h1 className="text-3xl font-black tracking-tighter text-rose-500 italic">EVOKA REGIST</h1>
           </div>
           <button 
-            onClick={() => window.location.hash = '#/admin'}
+            onClick={() => { window.history.pushState({}, '', '/admin'); window.dispatchEvent(new PopStateEvent('popstate')); }}
             className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 hover:text-white transition-colors"
           >
             Admin Panel
@@ -137,6 +137,31 @@ export default function PublicHome({ config }: PublicHomeProps) {
             )}
           </div>
         </div>
+
+        {/* Download Juknis Button */}
+        {config.proposalUrl && (
+          <div className="mb-20">
+            <a
+              href={config.proposalUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-slate-900 border border-slate-800 p-8 rounded-3xl shadow-2xl flex items-center justify-between group hover:border-amber-500/50 transition-all"
+            >
+              <div className="flex items-center gap-6">
+                <div className="w-16 h-16 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-all">
+                  <FileText size={32} />
+                </div>
+                <div>
+                  <h3 className="font-black italic tracking-tighter text-xl uppercase text-white mb-1">DOWNLOAD JUKNIS</h3>
+                  <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">Unduh proposal dan petunjuk teknis event</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 font-black text-amber-500 italic tracking-tighter transition-transform group-hover:translate-x-2">
+                <Download className="w-6 h-6" />
+              </div>
+            </a>
+          </div>
+        )}
 
         {/* Found Registration Modal Detail */}
         <AnimatePresence>
