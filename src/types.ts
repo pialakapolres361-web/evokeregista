@@ -26,6 +26,11 @@ export interface WebConfig {
   isOpen: boolean;
   logoUrl?: string;
   proposalUrl?: string;
+  countdown?: {
+    enabled: boolean;
+    eventName: string;
+    targetDate: string; // ISO string e.g. "2026-06-13T00:00:00"
+  };
 }
 
 export interface PdfConfig {

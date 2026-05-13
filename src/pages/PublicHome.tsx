@@ -5,6 +5,7 @@ import { doc, getDoc, collection, addDoc, serverTimestamp, query, orderBy, onSna
 import { Registration, WebConfig, FormField } from '../types';
 import RegistrationForm from '../components/RegistrationForm';
 import IDCardPreview from '../components/IDCardPreview';
+import CountdownTimer from '../components/CountdownTimer';
 import { motion, AnimatePresence } from 'motion/react';
 import { generateAndDownloadPDFFromConfig } from '../lib/pdf-utils';
 
@@ -79,6 +80,14 @@ export default function PublicHome({ config }: PublicHomeProps) {
             SISTEM REGRESTRASI STANDALONE BERPERFORMA TINGGI UNTUK EVENT SILAT PROFESIONAL.
           </p>
         </section>
+
+        {/* Countdown Timer */}
+        {config.countdown?.enabled && config.countdown.targetDate && (
+          <CountdownTimer
+            eventName={config.countdown.eventName || config.appName}
+            targetDate={config.countdown.targetDate}
+          />
+        )}
 
         {/* Action Grid */}
         <div className="grid md:grid-cols-2 gap-8 mb-20">

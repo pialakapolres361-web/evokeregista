@@ -1844,6 +1844,59 @@ function SettingsTab({ config }: { config: WebConfig }) {
         </div>
       </div>
 
+      {/* Countdown Settings */}
+      <div className="pt-8 border-t border-slate-800 space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-[10px] font-black text-slate-500 tracking-[0.3em] uppercase">Countdown Timer</p>
+            <p className="text-xs font-bold text-slate-600 uppercase tracking-widest mt-1">Tampilkan hitung mundur di halaman publik</p>
+          </div>
+          <button
+            onClick={() => setFormData({
+              ...formData,
+              countdown: {
+                enabled: !formData.countdown?.enabled,
+                eventName: formData.countdown?.eventName || formData.appName,
+                targetDate: formData.countdown?.targetDate || '',
+              }
+            })}
+            className={`relative w-14 h-8 rounded-full transition-all duration-500 flex items-center px-1 ${formData.countdown?.enabled ? 'bg-rose-600' : 'bg-slate-800'}`}
+          >
+            <div className={`w-6 h-6 rounded-full bg-white shadow-xl transition-transform duration-500 ${formData.countdown?.enabled ? 'translate-x-6' : 'translate-x-0'}`} />
+          </button>
+        </div>
+
+        {formData.countdown?.enabled && (
+          <div className="space-y-4 p-6 bg-slate-950 rounded-2xl border border-slate-800">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-500 tracking-[0.3em] uppercase">Nama Event</label>
+              <input
+                type="text"
+                value={formData.countdown?.eventName || ''}
+                onChange={e => setFormData({
+                  ...formData,
+                  countdown: { ...formData.countdown!, eventName: e.target.value }
+                })}
+                placeholder="Contoh: Piala Kapolres 2026"
+                className="w-full px-6 py-4 bg-slate-900 border border-slate-800 rounded-2xl focus:border-rose-500 outline-none font-bold text-white"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-500 tracking-[0.3em] uppercase">Tanggal Berakhir</label>
+              <input
+                type="datetime-local"
+                value={formData.countdown?.targetDate ? formData.countdown.targetDate.slice(0, 16) : ''}
+                onChange={e => setFormData({
+                  ...formData,
+                  countdown: { ...formData.countdown!, targetDate: e.target.value + ':00' }
+                })}
+                className="w-full px-6 py-4 bg-slate-900 border border-slate-800 rounded-2xl focus:border-rose-500 outline-none font-bold text-white [color-scheme:dark]"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className="pt-10 border-t border-slate-800">
         <button 
           onClick={handleSave}
