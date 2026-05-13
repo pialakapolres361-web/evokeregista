@@ -61,12 +61,6 @@ export default function PublicHome({ config }: PublicHomeProps) {
           <div className="flex items-center gap-3">
             <h1 className="text-3xl font-black tracking-tighter text-rose-500 italic">EVOKA REGIST</h1>
           </div>
-          <button 
-            onClick={() => { window.location.hash = '#/admin'; }}
-            className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 hover:text-white transition-colors"
-          >
-            Admin Panel
-          </button>
         </div>
       </header>
 
