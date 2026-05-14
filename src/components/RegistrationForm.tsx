@@ -87,13 +87,19 @@ export default function RegistrationForm({ config, type, onSuccess, initialRegis
 
       setSubmissionStatus('Menyimpan pendaftaran...');
       const { fullName, ...rest } = formData;
+
+      // Normalize semua text value ke uppercase agar konsisten
+      const normalizedCustomFields: Record<string, any> = {};
+      Object.entries(rest).forEach(([key, value]) => {
+        normalizedCustomFields[key] = typeof value === 'string' ? value.toUpperCase().trim() : value;
+      });
       
       const registrationData: Registration = {
         id: regId,
-        fullName: fullName || '',
+        fullName: (fullName || '').toUpperCase().trim(),
         type: (initialRegistration?.type || type || 'peserta') as 'peserta' | 'pelatih',
         photoUrl: photoUrl,
-        customFields: rest,
+        customFields: normalizedCustomFields,
         createdAt: timestamp,
       };
 
