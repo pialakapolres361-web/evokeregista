@@ -186,6 +186,50 @@ export default function AdminDashboard({ config }: AdminDashboardProps) {
     });
   };
 
+  const handleNormalizeData = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'NORMALIZE DATA',
+      message: `Sistem akan mengubah semua teks (nama, kontingen, dll) menjadi HURUF BESAR untuk ${registrations.length} data pendaftar. Lanjutkan?`,
+      onConfirm: async () => {
+        try {
+          let count = 0;
+          for (const reg of registrations) {
+            const updates: any = {};
+            let needsUpdate = false;
+
+            if (reg.fullName !== reg.fullName.toUpperCase().trim()) {
+              updates.fullName = reg.fullName.toUpperCase().trim();
+              needsUpdate = true;
+            }
+
+            if (reg.customFields) {
+              const normalizedFields: Record<string, any> = {};
+              Object.entries(reg.customFields).forEach(([key, value]) => {
+                if (typeof value === 'string' && value !== value.toUpperCase().trim()) {
+                  normalizedFields[key] = value.toUpperCase().trim();
+                  needsUpdate = true;
+                } else {
+                  normalizedFields[key] = value;
+                }
+              });
+              if (needsUpdate) updates.customFields = normalizedFields;
+            }
+
+            if (needsUpdate) {
+              await updateDoc(doc(db, 'registrations', reg.id), updates);
+              count++;
+            }
+          }
+          alert(`Berhasil normalize ${count} data pendaftar.`);
+        } catch (err) {
+          console.error("Normalize error:", err);
+          alert('Gagal normalize data.');
+        }
+      }
+    });
+  };
+
   const handleDownloadAllPdf = async (role: 'peserta' | 'pelatih') => {
     const targetRegs = registrations.filter(r => r.type === role);
     if (targetRegs.length === 0) {
@@ -523,6 +567,12 @@ export default function AdminDashboard({ config }: AdminDashboardProps) {
                     </div>
 
                     {/* Danger Zone */}
+                    <button 
+                      onClick={() => handleNormalizeData()}
+                      className="flex items-center justify-center gap-2 px-4 py-3 bg-slate-800 text-emerald-500 border border-emerald-500/20 rounded-xl text-[10px] font-black italic tracking-tighter hover:bg-emerald-500/10 transition-all"
+                    >
+                      <Check size={14} /> NORMALIZE
+                    </button>
                     <button 
                       onClick={() => handleDeleteAll('all')}
                       className="flex items-center justify-center gap-2 px-4 py-3 bg-slate-800 text-rose-500 border border-rose-500/20 rounded-xl text-[10px] font-black italic tracking-tighter hover:bg-rose-500/10 transition-all"
